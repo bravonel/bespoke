@@ -1,0 +1,68 @@
+- main "Bespoke Rube Goldberg machine builder" [ref=e2]:
+  - complementary:
+    - generic: B
+    - generic:
+      - button "Edit"
+      - button "Play"
+    - button "Preview"
+    - generic:
+      - button "↖ Select":
+        - generic: ↖
+        - generic: Select
+      - button "● Pill":
+        - generic: ●
+        - generic: Pill
+      - button "╱ Ramp":
+        - generic: ╱
+        - generic: Ramp
+      - button "▌ Wall":
+        - generic: ▌
+        - generic: Wall
+      - button "▯ Domino":
+        - generic: ▯
+        - generic: Domino
+      - button "◎ Gear":
+        - generic: ◎
+        - generic: Gear
+      - button "⇧ Elevator":
+        - generic: ⇧
+        - generic: Elevator
+      - button "⌁ Spring":
+        - generic: ⌁
+        - generic: Spring
+      - button "⤴ Catapult":
+        - generic: ⤴
+        - generic: Catapult
+      - button "◌ O Trigger":
+        - generic: ◌
+        - generic: O Trigger
+    - generic:
+      - button "Reset"
+    - generic:
+      - generic: Levels
+      - button "+"
+    - generic:
+      - generic:
+        - generic: Blank
+        - button "↵"
+      - generic:
+        - generic: Perpetual demo
+        - button "↵"
+      - generic: No saved levels
+    - generic:
+      - button "↓ File"
+      - button "↑ File"
+  - generic "Machine editor canvas" [ref=e56]
+  - button "Toggle tools panel" [pressed] [ref=e57] [cursor=pointer]: ›
+  - button "Toggle inspector panel" [active] [pressed] [ref=e58] [cursor=pointer]: ‹
+  - complementary:
+    - generic:
+      - generic: Scene
+      - button "×"
+    - generic:
+      - generic:
+        - generic: Parts
+        - textbox: "24"
+      - generic:
+        - generic: Mode
+        - textbox: edit
