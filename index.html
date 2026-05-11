@@ -3,45 +3,13 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Bespoke machine builder</title>
-    <link rel="icon" href="./pastilla.svg" type="image/svg+xml">
+    <title>Bespoke</title>
+    <link rel="icon" href="./bespoke.svg" type="image/svg+xml">
     <link rel="stylesheet" href="./styles.css">
   </head>
   <body>
-    <main class="builder" aria-label="Bespoke Rube Goldberg machine builder">
-      <aside class="panel panel-left">
-        <div class="brand-mark">B</div>
-        <div class="mode-row">
-          <button id="edit-toggle" class="control is-active" type="button">Edit</button>
-          <button id="play-toggle" class="control" type="button">Play</button>
-        </div>
-        <button id="preview-toggle" class="control" type="button">Preview</button>
-        <div id="palette" class="palette"></div>
-        <div class="panel-actions">
-          <button id="reset-scene" class="control" type="button">Reset</button>
-        </div>
-        <div class="level-head">
-          <span class="level-title">Levels</span>
-          <button id="save-new" class="icon-button" type="button" title="Save as new level">+</button>
-        </div>
-        <div id="level-list" class="level-list"></div>
-        <div class="level-actions">
-          <button id="download-level" class="control" type="button">↓ File</button>
-          <button id="upload-level" class="control" type="button">↑ File</button>
-        </div>
-      </aside>
-
-      <canvas id="motion-engine" aria-label="Machine editor canvas"></canvas>
-      <button id="toggle-left-panel" class="panel-toggle panel-toggle-left" type="button" title="Hide tools panel" aria-label="Toggle tools panel">‹</button>
-      <button id="toggle-right-panel" class="panel-toggle panel-toggle-right" type="button" title="Hide inspector panel" aria-label="Toggle inspector panel">›</button>
-
-      <aside class="panel panel-right">
-        <div class="inspector-head">
-          <span id="selected-type">Scene</span>
-          <button id="delete-part" class="icon-button" type="button" title="Delete selected part">×</button>
-        </div>
-        <div id="inspector" class="inspector"></div>
-      </aside>
+    <main class="builder is-preview" aria-label="Bespoke Rube Goldberg machine">
+      <canvas id="motion-engine" aria-label="Machine canvas"></canvas>
     </main>
     <script src="./lib/matter.min.js" defer></script>
     <script src="./app.js" defer></script>

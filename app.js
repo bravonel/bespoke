@@ -21,11 +21,70 @@
     toggleRightPanel: document.getElementById("toggle-right-panel"),
   };
 
+  const IS_VIEWER = !palette;
+
   const ASSETS = {
     logoBase: "./logo_incompleto.svg",
     logoFull: "./logo_completo.svg",
     pill: "./pastilla.svg",
   };
+
+  // Curtain backdrop colors — contrast well with pink, yellow, black, white
+  const CURTAIN_COLORS = [
+    "rgba(100, 180, 220, 0.25)",   // sky blue
+    "rgba(120, 200, 170, 0.25)",   // teal
+    "rgba(160, 130, 200, 0.25)",   // lavender
+    "rgba(200, 160, 100, 0.25)",   // warm sand
+    "rgba(100, 160, 140, 0.25)",   // sage
+    "rgba(180, 130, 160, 0.25)",   // mauve
+    "rgba(130, 180, 130, 0.25)",   // soft green
+    "rgba(170, 150, 200, 0.25)",   // periwinkle
+    "rgba(255, 255, 255, 0.35)",   // white
+  ];
+
+  function sceneCurtainColors() {
+    return state.scene.curtainColors || CURTAIN_COLORS;
+  }
+
+  function parseRgba(str) {
+    const m = str.match(/rgba?\(\s*(\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+    if (!m) return { hex: "#888888", alpha: 0.25 };
+    const r = Number(m[1]), g = Number(m[2]), b = Number(m[3]);
+    const a = m[4] !== undefined ? Number(m[4]) : 1;
+    return { hex: "#" + [r, g, b].map((v) => v.toString(16).padStart(2, "0")).join(""), alpha: a };
+  }
+
+  function toRgba(hex, alpha) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
+  function ensureSceneCurtainColors() {
+    if (!state.scene.curtainColors) {
+      state.scene.curtainColors = CURTAIN_COLORS.slice();
+    }
+    return state.scene.curtainColors;
+  }
+
+  // Shuffled queue ensures every color appears before any repeats
+  let curtainQueue = [];
+  function nextCurtainColor(lastColor) {
+    if (curtainQueue.length === 0) {
+      curtainQueue = sceneCurtainColors().slice();
+      // Fisher-Yates shuffle
+      for (let i = curtainQueue.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [curtainQueue[i], curtainQueue[j]] = [curtainQueue[j], curtainQueue[i]];
+      }
+      // If first in queue is same as last used, move it to the end
+      if (curtainQueue[0] === lastColor && curtainQueue.length > 1) {
+        curtainQueue.push(curtainQueue.shift());
+      }
+    }
+    return curtainQueue.shift();
+  }
 
   const LOGO = {
     width: 1148.34,
@@ -226,6 +285,7 @@
     time: 0,
     rotorAngle: 0,
     rotorSpeed: 0,
+    curtain: { progress: 0, dropColor: null, bgColor: null, dropping: false, cooldown: 0 },
     logoLayout: null,
     currentSlotId: null,
     panels: { leftCollapsed: false, rightCollapsed: false },
@@ -275,15 +335,44 @@
     loadImage(ASSETS.pill),
   ]).then(([logoBase, logoFull, pill]) => {
     state.assets = { logoBase, logoFull, pill };
-    bindUI();
-    buildPalette();
-    state.scene = defaultScene();
-    state.currentSlotId = BUILTIN_DEMO_ID;
-    resize();
-    renderInspector();
-    renderLevelList();
-    requestAnimationFrame(tick);
+    if (IS_VIEWER) {
+      bootViewer();
+    } else {
+      bindUI();
+      buildPalette();
+      state.scene = defaultScene();
+      state.currentSlotId = BUILTIN_DEMO_ID;
+      resize();
+      renderInspector();
+      renderLevelList();
+      requestAnimationFrame(tick);
+    }
   });
+
+  function bootViewer() {
+    window.addEventListener("resize", resize);
+    if (window.ResizeObserver) {
+      new ResizeObserver(() => resize()).observe(canvas);
+    }
+    fetch("./level.json")
+      .then((r) => r.json())
+      .then((data) => {
+        state.scene = normalizeScene(data);
+        state.mode = "preview";
+        resize();
+        computeLogoLayout();
+        buildWorld();
+        requestAnimationFrame(tick);
+      })
+      .catch(() => {
+        state.scene = defaultScene();
+        state.mode = "preview";
+        resize();
+        computeLogoLayout();
+        buildWorld();
+        requestAnimationFrame(tick);
+      });
+  }
 
   function bindUI() {
     window.addEventListener("resize", resize);
@@ -317,6 +406,7 @@
   }
 
   function buildPalette() {
+    if (!palette) return;
     palette.innerHTML = "";
     TOOLS.forEach((tool) => {
       const button = document.createElement("button");
@@ -334,8 +424,8 @@
 
   function setMode(mode) {
     state.mode = mode;
-    ui.edit.classList.toggle("is-active", mode === "edit");
-    ui.play.classList.toggle("is-active", mode === "play");
+    if (ui.edit) ui.edit.classList.toggle("is-active", mode === "edit");
+    if (ui.play) ui.play.classList.toggle("is-active", mode === "play");
     syncPanelChrome();
 
     if (!state.scene.designWidth && state.width > 0) {
@@ -364,6 +454,7 @@
   }
 
   function syncPanelChrome() {
+    if (IS_VIEWER) return;
     builderEl.classList.toggle("is-left-collapsed", state.panels.leftCollapsed);
     builderEl.classList.toggle("is-right-collapsed", state.panels.rightCollapsed);
 
@@ -411,6 +502,7 @@
     };
     if (scene.designWidth) result.designWidth = scene.designWidth;
     if (scene.designHeight) result.designHeight = scene.designHeight;
+    if (Array.isArray(scene.curtainColors)) result.curtainColors = scene.curtainColors.slice();
     return result;
   }
 
@@ -736,6 +828,11 @@
     if (triggerPart.type !== "trigger" || !isDynamicBody(otherBody)) return;
     state.rotorSpeed += (Number(triggerPart.power) || 0.08) * 0.05;
     state.rotorSpeed = clamp(state.rotorSpeed, -0.24, 0.24);
+    if (!state.curtain.dropping && state.curtain.cooldown <= 0) {
+      state.curtain.dropping = true;
+      state.curtain.progress = 0;
+      state.curtain.dropColor = nextCurtainColor(state.curtain.bgColor);
+    }
   }
 
   function applySpring(springPart, otherBody) {
@@ -774,6 +871,17 @@
   function update(delta) {
     state.rotorSpeed *= 0.992;
     state.rotorAngle += state.rotorSpeed;
+    if (state.curtain.cooldown > 0) state.curtain.cooldown--;
+    if (state.curtain.dropping) {
+      state.curtain.progress += 0.006;
+      if (state.curtain.progress >= 1) {
+        state.curtain.bgColor = state.curtain.dropColor;
+        state.curtain.dropColor = null;
+        state.curtain.progress = 0;
+        state.curtain.dropping = false;
+        state.curtain.cooldown = 120; // ~2 seconds before next curtain can start
+      }
+    }
 
     if ((state.mode !== "play" && state.mode !== "preview") || !state.engine) return;
 
@@ -1120,9 +1228,44 @@
     }
   }
 
+  function drawCurtain() {
+    const c = state.curtain;
+    if (!c.bgColor && !c.dropColor) return;
+    ctx.save();
+    ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
+    const sw = state.width;
+    const sh = state.height;
+
+    if (c.dropColor && c.progress > 0) {
+      const curtainH = sh * c.progress;
+      // New curtain covers top portion
+      ctx.fillStyle = c.dropColor;
+      ctx.fillRect(0, 0, sw, curtainH);
+      // Soft bottom edge of the dropping curtain
+      const edgeH = 50;
+      const grad = ctx.createLinearGradient(0, curtainH, 0, curtainH + edgeH);
+      grad.addColorStop(0, c.dropColor);
+      grad.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, curtainH, sw, edgeH);
+      // Previous color only below the curtain (no overlap)
+      if (c.bgColor) {
+        ctx.fillStyle = c.bgColor;
+        ctx.fillRect(0, curtainH, sw, sh - curtainH);
+      }
+    } else if (c.bgColor) {
+      // No active drop — just the settled background
+      ctx.fillStyle = c.bgColor;
+      ctx.fillRect(0, 0, sw, sh);
+    }
+
+    ctx.restore();
+  }
+
   function draw() {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawCurtain();
     const s = state.sceneScale;
     const ox = state.sceneOffset.x;
     const oy = state.sceneOffset.y;
@@ -1218,14 +1361,7 @@
     const L = state.logoLayout;
     if (!L) return;
 
-    ctx.save();
-    ctx.fillStyle = COLORS.glass;
-    ctx.shadowColor = "rgba(248, 249, 247, 0.95)";
-    ctx.shadowBlur = 34;
-    roundRect(ctx, L.logoX - 18, L.logoY + L.logoHeight * 0.1, L.logoWidth + 36, L.logoHeight * 0.74, 32);
-    ctx.fill();
-    ctx.restore();
-
+    // Logo image
     ctx.save();
     ctx.globalAlpha = 0.95;
     ctx.shadowColor = "rgba(29, 29, 27, 0.07)";
@@ -1234,6 +1370,7 @@
     ctx.drawImage(state.assets.logoBase, L.logoX, L.logoY, L.logoWidth, L.logoHeight);
     ctx.restore();
 
+    // Rotor pill
     ctx.save();
     ctx.translate(L.rotorX, L.rotorY);
     ctx.rotate(state.rotorAngle);
@@ -1761,7 +1898,7 @@
 
     if (event.key === "Escape") {
       if (state.mode === "preview") {
-        exitPreview();
+        if (!IS_VIEWER) exitPreview();
         return;
       }
       if (state.activeTool !== "select") {
@@ -1911,6 +2048,7 @@
   }
 
   function renderInspector() {
+    if (!inspector) return;
     const part = getSelected();
     selectedType.textContent = part ? part.type.charAt(0).toUpperCase() + part.type.slice(1) : "Scene";
     inspector.innerHTML = "";
@@ -1918,6 +2056,64 @@
     if (!part) {
       addReadonly("Parts", String(state.scene.parts.length));
       addReadonly("Mode", state.mode);
+      addGroupLabel("Curtain Colors");
+      const colors = sceneCurtainColors();
+      colors.forEach((rgba, i) => {
+        const parsed = parseRgba(rgba);
+        const row = document.createElement("div");
+        row.className = "field";
+        row.style.cssText = "grid-template-columns:32px minmax(0,1fr) auto;gap:4px";
+
+        const swatch = document.createElement("input");
+        swatch.type = "color";
+        swatch.value = parsed.hex;
+        swatch.style.cssText = "width:32px;height:24px;padding:0;border:1px solid rgba(0,0,0,0.15);border-radius:3px;cursor:pointer;background:none";
+        swatch.addEventListener("input", () => {
+          const arr = ensureSceneCurtainColors();
+          arr[i] = toRgba(swatch.value, Number(opac.value) / 100);
+          curtainQueue = [];
+        });
+
+        const opac = document.createElement("input");
+        opac.type = "number";
+        opac.min = "1";
+        opac.max = "100";
+        opac.step = "1";
+        opac.value = Math.round(parsed.alpha * 100);
+        opac.title = "Opacity %";
+        opac.style.cssText = "width:100%;min-width:0;height:24px;border:1px solid rgba(0,0,0,0.15);padding:0 4px;font-size:11px";
+        opac.addEventListener("input", () => {
+          const arr = ensureSceneCurtainColors();
+          arr[i] = toRgba(swatch.value, clamp(Number(opac.value), 1, 100) / 100);
+          curtainQueue = [];
+        });
+
+        const del = document.createElement("span");
+        del.textContent = "\u00d7";
+        del.style.cssText = "cursor:pointer;opacity:0.4;font-size:16px;line-height:1;user-select:none;padding:0 2px";
+        del.addEventListener("click", () => {
+          const arr = ensureSceneCurtainColors();
+          if (arr.length <= 1) return;
+          arr.splice(i, 1);
+          curtainQueue = [];
+          renderInspector();
+        });
+
+        row.append(swatch, opac, del);
+        inspector.appendChild(row);
+      });
+
+      const addBtn = document.createElement("button");
+      addBtn.className = "control";
+      addBtn.textContent = "+ Add Color";
+      addBtn.style.cssText = "width:100%;min-height:26px;font-size:12px;margin-top:4px";
+      addBtn.addEventListener("click", () => {
+        const arr = ensureSceneCurtainColors();
+        arr.push("rgba(160, 160, 160, 0.25)");
+        curtainQueue = [];
+        renderInspector();
+      });
+      inspector.appendChild(addBtn);
       return;
     }
 
@@ -2130,6 +2326,7 @@
   }
 
   function renderLevelList() {
+    if (!levelListEl) return;
     levelListEl.innerHTML = "";
     levelListEl.appendChild(createLevelRow({
       id: BUILTIN_BLANK_ID,

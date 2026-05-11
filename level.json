@@ -1,0 +1,264 @@
+{
+  "parts": [
+    {
+      "id": "demo-ramp-upper",
+      "type": "ramp",
+      "x": 300,
+      "y": 160,
+      "w": 400,
+      "h": 10,
+      "angle": 4,
+      "strokeColor": "#e6e6e6",
+      "fillColor": "#fafafa"
+    },
+    {
+      "id": "demo-trigger-logo",
+      "type": "trigger",
+      "x": 900,
+      "y": 440,
+      "r": 66,
+      "power": 0.12
+    },
+    {
+      "id": "ramp-ql2b6y",
+      "type": "ramp",
+      "x": 1060,
+      "y": 560,
+      "w": 400,
+      "h": 10,
+      "angle": 7,
+      "strokeColor": "#e6e6e6",
+      "fillColor": "#fafafa"
+    },
+    {
+      "id": "catapult-xoyovp",
+      "type": "catapult",
+      "x": 1340,
+      "y": 660,
+      "w": 200,
+      "angle": -30,
+      "power": 0.009,
+      "strokeColor": "#e6e6e6"
+    },
+    {
+      "id": "ramp-n249js",
+      "type": "ramp",
+      "x": 340,
+      "y": 680,
+      "w": 330,
+      "h": 10,
+      "angle": -12,
+      "strokeColor": "#e6e6e6",
+      "fillColor": "#fafafa"
+    },
+    {
+      "id": "bucketLift-yk2l0i",
+      "type": "bucketLift",
+      "x": 93,
+      "y": 447,
+      "w": 60,
+      "h": 380,
+      "speed": 1,
+      "bucketW": 36,
+      "buckets": 5,
+      "preloaded": "yes",
+      "pillR": 16,
+      "pillBounce": 0.75,
+      "showGuides": "no",
+      "strokeColor": "#e6e6e6",
+      "fillColor": "#fafafa",
+      "pillInertia": 1
+    },
+    {
+      "id": "catapult-3pkx1o",
+      "type": "catapult",
+      "x": 579,
+      "y": 261,
+      "w": 200,
+      "angle": -15,
+      "power": 0.01,
+      "flip": "yes",
+      "strokeColor": "#e6e6e6"
+    },
+    {
+      "id": "ramp-sficvv",
+      "type": "ramp",
+      "x": 780,
+      "y": 140,
+      "w": 220,
+      "h": 10,
+      "angle": 3,
+      "strokeColor": "#e6e6e6",
+      "fillColor": "#fafafa"
+    },
+    {
+      "id": "ramp-k9zenm",
+      "type": "ramp",
+      "x": 980,
+      "y": 160,
+      "w": 220,
+      "h": 10,
+      "angle": -8,
+      "strokeColor": "#e6e6e6",
+      "fillColor": "#fafafa"
+    },
+    {
+      "id": "ramp-2894m0",
+      "type": "ramp",
+      "x": 633,
+      "y": 645,
+      "w": 230,
+      "h": 10,
+      "angle": 0,
+      "strokeColor": "#e6e6e6",
+      "fillColor": "#fafafa"
+    },
+    {
+      "id": "gear-jg8u51",
+      "type": "gear",
+      "x": 1180,
+      "y": 200,
+      "r": 40,
+      "speed": -0.014,
+      "driveMode": "auto",
+      "strokeColor": "#e6e6e6"
+    },
+    {
+      "id": "wall-i9pn4t",
+      "type": "wall",
+      "x": 161,
+      "y": 772,
+      "w": 10,
+      "h": 100,
+      "angle": 0,
+      "strokeColor": "#e6e6e6",
+      "fillColor": "#fafafa"
+    },
+    {
+      "id": "gear-5m4838",
+      "type": "gear",
+      "x": 1127,
+      "y": 260,
+      "r": 40,
+      "speed": -0.014,
+      "driveMode": "free",
+      "strokeColor": "#e6e6e6"
+    },
+    {
+      "id": "gear-560msr",
+      "type": "gear",
+      "x": 1234,
+      "y": 260,
+      "r": 40,
+      "speed": 0.014,
+      "driveMode": "free",
+      "strokeColor": "#e6e6e6"
+    },
+    {
+      "id": "ramp-6qywk3",
+      "type": "ramp",
+      "x": 1293,
+      "y": 602,
+      "w": 150,
+      "h": 4,
+      "angle": 0,
+      "strokeColor": "#e6e6e6",
+      "fillColor": "#fafafa"
+    },
+    {
+      "id": "gear-sqpb9f",
+      "type": "gear",
+      "x": 1283,
+      "y": 323,
+      "r": 40,
+      "speed": 0.014,
+      "driveMode": "free",
+      "strokeColor": "#e6e6e6"
+    },
+    {
+      "id": "wall-8tixot",
+      "type": "wall",
+      "x": 24,
+      "y": 774,
+      "w": 10,
+      "h": 100,
+      "angle": 0,
+      "strokeColor": "#e6e6e6",
+      "fillColor": "#fafafa"
+    },
+    {
+      "id": "wall-a5l0ws",
+      "type": "wall",
+      "x": 1492,
+      "y": 563,
+      "w": 10,
+      "h": 180,
+      "angle": 0,
+      "strokeColor": "#e6e6e6",
+      "fillColor": "#fafafa"
+    },
+    {
+      "id": "ramp-zokc32",
+      "type": "ramp",
+      "x": 940,
+      "y": 620,
+      "w": 350,
+      "h": 10,
+      "angle": -8,
+      "strokeColor": "#e6e6e6",
+      "fillColor": "#fafafa"
+    },
+    {
+      "id": "gear-lz7p4x",
+      "type": "gear",
+      "x": 1315,
+      "y": 248,
+      "r": 42,
+      "speed": 0.014,
+      "driveMode": "free",
+      "strokeColor": "#e9e9e9"
+    },
+    {
+      "id": "gear-07c2oc",
+      "type": "gear",
+      "x": 1049,
+      "y": 238,
+      "r": 42,
+      "speed": 0.014,
+      "driveMode": "free",
+      "strokeColor": "#e9e9e9"
+    },
+    {
+      "id": "gear-c4nlnt",
+      "type": "gear",
+      "x": 1182,
+      "y": 323,
+      "r": 42,
+      "speed": 0.014,
+      "driveMode": "free",
+      "strokeColor": "#e9e9e9"
+    },
+    {
+      "id": "gear-bb1k5s",
+      "type": "gear",
+      "x": 1261,
+      "y": 182,
+      "r": 42,
+      "speed": 0.014,
+      "driveMode": "free",
+      "strokeColor": "#e8e8e8"
+    },
+    {
+      "id": "gear-gci09a",
+      "type": "gear",
+      "x": 1070,
+      "y": 319,
+      "r": 42,
+      "speed": 0.014,
+      "driveMode": "free",
+      "strokeColor": "#ebebeb"
+    }
+  ],
+  "designWidth": 1512,
+  "designHeight": 828
+}
