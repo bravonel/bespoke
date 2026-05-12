@@ -130,7 +130,7 @@
     spring: ["x", "y", "w", "h", "angle", "power", "strokeColor"],
     catapult: ["x", "y", "w", "angle", "power", "flip", "strokeColor"],
     trigger: ["x", "y", "r", "power", "strokeColor"],
-    bucketLift: ["x", "y", "w", "h", "speed", "bucketW", "buckets", "preloaded", "pillR", "pillBounce", "pillDensity", "pillFriction", "pillAir", "pillInertia", "showGuides", "strokeColor", "fillColor"],
+    bucketLift: ["x", "y", "w", "h", "speed", "bucketW", "buckets", "dropSide", "preloaded", "pillR", "pillBounce", "pillDensity", "pillFriction", "pillAir", "pillInertia", "showGuides", "strokeColor", "fillColor"],
   };
 
   const COLOR_FIELDS = new Set(["strokeColor", "fillColor"]);
@@ -167,6 +167,7 @@
     pillInertia: "Pill Spin Res",
     strokeColor: "Stroke",
     fillColor: "Fill",
+    dropSide: "Drop Side",
     showGuides: "Guides",
   };
 
@@ -198,6 +199,10 @@
       { value: "no", label: "No" },
       { value: "yes", label: "Yes" },
     ],
+    dropSide: [
+      { value: "right", label: "Right" },
+      { value: "left", label: "Left" },
+    ],
     showGuides: [
       { value: "yes", label: "Yes" },
       { value: "no", label: "No" },
@@ -220,7 +225,7 @@
     spring: { w: 96, h: 24, angle: -45, power: 0.5 },
     catapult: { w: 170, angle: -12, power: 0.052, flip: "no" },
     trigger: { r: 56, power: 0.09 },
-    bucketLift: { w: 60, h: 200, speed: 3, bucketW: 36, buckets: 6, preloaded: "no", pillR: 12, pillBounce: 0.5, pillDensity: 0.001, pillFriction: 0.06, pillAir: 0.001, pillInertia: 2.5, showGuides: "yes" },
+    bucketLift: { w: 60, h: 200, speed: 3, bucketW: 36, buckets: 6, dropSide: "right", preloaded: "no", pillR: 12, pillBounce: 0.5, pillDensity: 0.001, pillFriction: 0.06, pillAir: 0.001, pillInertia: 2.5, showGuides: "yes" },
   };
   const FRAME_STEP = 1000 / 60;
   const SNAP_SIZE = 20;
@@ -261,6 +266,7 @@
     Constraint,
     Engine,
     Events,
+    Sleeping,
     Vector,
     World,
   } = Matter || {};
@@ -571,7 +577,7 @@
   function buildWorld() {
     clearWorld();
     state.engine = Engine.create({
-      enableSleeping: false,
+      enableSleeping: true,
       positionIterations: 10,
       velocityIterations: 8,
     });
@@ -798,6 +804,7 @@
       state.playMeta.set(part.id, {
         phase: 0,
         bucketAttachments: attachments,
+        releasedPills: new Map(), // pillId → release timestamp (cooldown)
       });
     }
   }
@@ -869,11 +876,12 @@
   }
 
   function update(delta) {
-    state.rotorSpeed *= 0.992;
-    state.rotorAngle += state.rotorSpeed;
-    if (state.curtain.cooldown > 0) state.curtain.cooldown--;
+    const dtScale = delta / 16.666;
+    state.rotorSpeed *= Math.pow(0.992, dtScale);
+    state.rotorAngle += state.rotorSpeed * dtScale;
+    if (state.curtain.cooldown > 0) state.curtain.cooldown -= dtScale;
     if (state.curtain.dropping) {
-      state.curtain.progress += 0.006;
+      state.curtain.progress += 0.006 * dtScale;
       if (state.curtain.progress >= 1) {
         state.curtain.bgColor = state.curtain.dropColor;
         state.curtain.dropColor = null;
@@ -968,8 +976,10 @@
         state.bodiesById.forEach((candidate) => {
           if (!isDynamicBody(candidate) || meta.cooldown > 0) return;
           if (candidate.plugin?.type !== "pill") return;
-          const distance = Vector.magnitude(Vector.sub(candidate.position, cup));
+          const dx = candidate.position.x - cup.x, dy = candidate.position.y - cup.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
           if (distance > cupRadius) return;
+          Sleeping.set(candidate, false);
           const power = Math.max(0.001, Number(simPart.power) || 0.05);
           // Normal: launch up-left. Flipped: mirror across vertical = up-right
           const launchAngle = flipped
@@ -1002,8 +1012,26 @@
 
         meta.phase += speed * 0.0002 * delta;
 
+        // Clean up expired cooldowns
+        const now = performance.now();
+        meta.releasedPills.forEach((time, id) => { if (now - time > 2000) meta.releasedPills.delete(id); });
+
         const attachedPills = new Set();
         meta.bucketAttachments.forEach((att) => { if (att) attachedPills.add(att.pillId); });
+
+        // Pre-filter: collect free pills near this lift ONCE (avoid O(n) per bucket)
+        const searchRadius = Math.max(a, b) + bw * 2;
+        const nearbyPills = [];
+        state.bodiesById.forEach((candidate) => {
+          if (!isDynamicBody(candidate) || candidate.plugin?.type !== "pill") return;
+          if (attachedPills.has(candidate.plugin.partId)) return;
+          const releaseTime = meta.releasedPills.get(candidate.plugin.partId);
+          if (releaseTime && now - releaseTime < 2000) return;
+          const dx = candidate.position.x - cx, dy = candidate.position.y - cy;
+          if (dx * dx + dy * dy < searchRadius * searchRadius) {
+            nearbyPills.push(candidate);
+          }
+        });
 
         for (let i = 0; i < NUM_BUCKETS; i++) {
           const angle = meta.phase + (i * Math.PI * 2) / NUM_BUCKETS;
@@ -1011,7 +1039,8 @@
           const by = cy - b * Math.cos(angle);
 
           const na = ((angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-          const tilt = bucketTilt(na);
+          const dropDir = simPart.dropSide === "left" ? -1 : 1;
+          const tilt = bucketTilt(na) * dropDir;
 
           // Pill sits above the bucket floor in the bucket's local -Y direction
           const pr = clamp(Number(simPart.pillR) || 12, 4, 40);
@@ -1019,23 +1048,30 @@
           const pillX = bx + Math.sin(tilt) * pillDist;
           const pillY = by - Math.cos(tilt) * pillDist;
 
-          // Pickup: when bucket is upright enough (tilt < ~54°)
-          const canPickup = tilt < Math.PI * 0.3;
-          // Release: when bucket has tipped enough (tilt between 70° and 140°)
-          const shouldRelease = tilt > Math.PI * 0.39 && tilt < Math.PI * 0.78;
+          // Pickup: when bucket is upright enough (|tilt| < ~54°)
+          const absTilt = Math.abs(tilt);
+          const canPickup = absTilt < Math.PI * 0.3;
+          // Release: when bucket has tipped enough (|tilt| between 70° and 140°)
+          const shouldRelease = absTilt > Math.PI * 0.39 && absTilt < Math.PI * 0.78;
+          // Ascending phase: bucket is past the upper descent zone (safe to pick up)
+          const isAscendingPhase = na > Math.PI * 0.4;
 
-          // --- Pickup ---
-          if (canPickup && !meta.bucketAttachments[i]) {
-            state.bodiesById.forEach((candidate) => {
-              if (meta.bucketAttachments[i]) return;
-              if (!isDynamicBody(candidate) || candidate.plugin?.type !== "pill") return;
-              if (attachedPills.has(candidate.plugin.partId)) return;
+          // --- Pickup (uses pre-filtered nearbyPills) ---
+          if (canPickup && isAscendingPhase && !meta.bucketAttachments[i]) {
+            const pickupR = bw * 1.5;
+            for (let j = 0; j < nearbyPills.length; j++) {
+              const candidate = nearbyPills[j];
+              if (meta.bucketAttachments[i]) break;
+              if (attachedPills.has(candidate.plugin.partId)) continue;
+              // Pill must be above or at bucket opening level
+              if (candidate.position.y > by + bw * 0.4) continue;
               const dist = Math.hypot(candidate.position.x - bx, candidate.position.y - by);
-              if (dist < bw * 1.5) {
+              if (dist < pickupR) {
                 meta.bucketAttachments[i] = { pillId: candidate.plugin.partId };
                 attachedPills.add(candidate.plugin.partId);
+                meta.releasedPills.delete(candidate.plugin.partId);
               }
-            });
+            }
           }
 
           // --- Move or release attached pill ---
@@ -1045,15 +1081,19 @@
             if (!pillBody) {
               meta.bucketAttachments[i] = null;
             } else if (shouldRelease) {
-              // Release: eject in the tilt direction with momentum
+              // Wake up and eject in the tilt direction with momentum
+              Sleeping.set(pillBody, false);
               const ejectSpeed = 2.5;
               Body.setVelocity(pillBody, {
                 x: Math.sin(tilt) * ejectSpeed,
                 y: Math.cos(tilt) * ejectSpeed * 0.5,
               });
               Body.setAngularVelocity(pillBody, 0);
+              meta.releasedPills.set(att.pillId, now);
               meta.bucketAttachments[i] = null;
             } else {
+              // Keep attached pill awake and in position
+              Sleeping.set(pillBody, false);
               Body.setPosition(pillBody, { x: pillX, y: pillY });
               Body.setVelocity(pillBody, { x: 0, y: 0 });
               Body.setAngularVelocity(pillBody, 0);
@@ -1176,25 +1216,33 @@
   }
 
   function clampBodySpeed(body, maxSpeed) {
-    const speed = Vector.magnitude(body.velocity);
-    if (!Number.isFinite(speed) || speed <= maxSpeed) return;
-    const scale = maxSpeed / speed;
-    Body.setVelocity(body, {
-      x: body.velocity.x * scale,
-      y: body.velocity.y * scale,
-    });
+    const vx = body.velocity.x, vy = body.velocity.y;
+    const speedSq = vx * vx + vy * vy;
+    if (!Number.isFinite(speedSq) || speedSq <= maxSpeed * maxSpeed) return;
+    const scale = maxSpeed / Math.sqrt(speedSq);
+    Body.setVelocity(body, { x: vx * scale, y: vy * scale });
   }
 
+  const _oobRemoveQueue = [];
   function sanitizeBodies() {
     const MAX_SPEED = 14;
     const MAX_ANGULAR = 0.4;
-    state.bodiesById.forEach((body) => {
+    const rw = refWidth(), rh = refHeight();
+    const margin = 400;
+    _oobRemoveQueue.length = 0;
+    state.bodiesById.forEach((body, id) => {
       if (body.isStatic || body.isSensor) return;
       if (!isFiniteBody(body)) {
-        Body.setPosition(body, { x: refWidth() * 0.5, y: 0 });
+        Body.setPosition(body, { x: rw * 0.5, y: 0 });
         Body.setAngle(body, 0);
         Body.setVelocity(body, { x: 0, y: 0 });
         Body.setAngularVelocity(body, 0);
+        return;
+      }
+      // Remove pills that fell far out of bounds
+      const px = body.position.x, py = body.position.y;
+      if (body.plugin?.type === "pill" && (px < -margin || px > rw + margin || py < -margin || py > rh + margin)) {
+        _oobRemoveQueue.push(id);
         return;
       }
       clampBodySpeed(body, MAX_SPEED);
@@ -1202,6 +1250,15 @@
         Body.setAngularVelocity(body, Math.sign(body.angularVelocity) * MAX_ANGULAR);
       }
     });
+    // Remove out-of-bounds pills outside the iterator
+    for (let i = 0; i < _oobRemoveQueue.length; i++) {
+      const id = _oobRemoveQueue[i];
+      const body = state.bodiesById.get(id);
+      if (body) {
+        World.remove(state.world, body);
+        state.bodiesById.delete(id);
+      }
+    }
   }
 
   function resetDemoBody(part, simPart, body) {
@@ -1237,16 +1294,20 @@
     const sh = state.height;
 
     if (c.dropColor && c.progress > 0) {
-      const curtainH = sh * c.progress;
+      const curtainH = Math.round(sh * c.progress);
       // New curtain covers top portion
       ctx.fillStyle = c.dropColor;
       ctx.fillRect(0, 0, sw, curtainH);
-      // Soft bottom edge of the dropping curtain
+      // Soft bottom edge — use cached gradient when position hasn't changed
       const edgeH = 50;
-      const grad = ctx.createLinearGradient(0, curtainH, 0, curtainH + edgeH);
-      grad.addColorStop(0, c.dropColor);
-      grad.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.fillStyle = grad;
+      if (c._gradY !== curtainH || c._gradColor !== c.dropColor) {
+        c._grad = ctx.createLinearGradient(0, curtainH, 0, curtainH + edgeH);
+        c._grad.addColorStop(0, c.dropColor);
+        c._grad.addColorStop(1, "rgba(0,0,0,0)");
+        c._gradY = curtainH;
+        c._gradColor = c.dropColor;
+      }
+      ctx.fillStyle = c._grad;
       ctx.fillRect(0, curtainH, sw, edgeH);
       // Previous color only below the curtain (no overlap)
       if (c.bgColor) {
@@ -1375,7 +1436,7 @@
     ctx.translate(L.rotorX, L.rotorY);
     ctx.rotate(state.rotorAngle);
     ctx.shadowColor = "rgba(218, 22, 122, 0.24)";
-    ctx.shadowBlur = 18 + Math.abs(state.rotorSpeed) * 60;
+    ctx.shadowBlur = Math.min(Math.round(18 + Math.abs(state.rotorSpeed) * 60), 40);
     ctx.drawImage(state.assets.pill, -L.rotorW * 0.5, -L.rotorH * 0.5, L.rotorW, L.rotorH);
     ctx.restore();
   }
@@ -1384,15 +1445,17 @@
     state.scene.parts.forEach((part) => drawPart(part, null));
   }
 
+  const _sceneIdSet = new Set();
   function drawPlayParts() {
-    const sceneIds = new Set(state.scene.parts.map((p) => p.id));
+    _sceneIdSet.clear();
     state.scene.parts.forEach((part) => {
+      _sceneIdSet.add(part.id);
       const body = state.bodiesById.get(part.id);
       drawPart(simulatedPart(part), body);
     });
     // Draw preloaded pills (physics bodies with no scene part)
     state.bodiesById.forEach((body, id) => {
-      if (sceneIds.has(id)) return;
+      if (_sceneIdSet.has(id)) return;
       if (body.plugin?.type !== "pill") return;
       drawPill(body.position.x, body.position.y, body.angle, body.plugin.pillR || 12, body.plugin.pulse || 0);
     });
@@ -1451,8 +1514,10 @@
     ctx.fillStyle = part.fillColor || (part.type === "domino" ? "rgba(218, 22, 122, 0.11)" : "rgba(29, 29, 27, 0.06)");
     ctx.strokeStyle = part.strokeColor || (part.type === "ramp" ? COLORS.yellowRail : part.type === "domino" ? COLORS.pinkRail : COLORS.rail);
     ctx.lineWidth = 2 + pulse * 2;
-    ctx.shadowColor = ctx.strokeStyle;
-    ctx.shadowBlur = pulse * 12;
+    if (pulse > 0.05) {
+      ctx.shadowColor = ctx.strokeStyle;
+      ctx.shadowBlur = Math.round(pulse * 12);
+    }
     ctx.beginPath();
     ctx.rect(-part.w * 0.5, -part.h * 0.5, part.w, part.h);
     ctx.fill();
@@ -1465,8 +1530,13 @@
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(angle);
-    ctx.shadowColor = "rgba(218, 22, 122, 0.24)";
-    ctx.shadowBlur = 12 + pulse * 14;
+    if (pulse > 0.05) {
+      ctx.shadowColor = "rgba(218, 22, 122, 0.24)";
+      ctx.shadowBlur = Math.round(12 + pulse * 14);
+    } else {
+      ctx.shadowColor = "rgba(218, 22, 122, 0.18)";
+      ctx.shadowBlur = 10;
+    }
     ctx.drawImage(state.assets.pill, -size * 0.5, -size * 0.5, size, size);
     ctx.restore();
   }
@@ -1631,9 +1701,10 @@
 
       // Piecewise tilt: upright on ascent, tips only at top curve
       const na = ((bucketAngle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-      const tilt = bucketTilt(na);
+      const dropDir = part.dropSide === "left" ? -1 : 1;
+      const tilt = bucketTilt(na) * dropDir;
 
-      const isAscending = tilt < Math.PI * 0.3;
+      const isAscending = Math.abs(tilt) < Math.PI * 0.3;
       const hasAttachment = meta && meta.bucketAttachments[i];
 
       ctx.save();
@@ -2123,7 +2194,7 @@
 
     const posFields = ["x", "y"];
     const dimFields = ["w", "h", "r", "angle", "bucketW", "buckets"];
-    const behaviorFields = ["density", "restitution", "friction", "frictionAir", "inertia", "speed", "power", "travel", "mode", "startPos", "triggerAction", "driveMode", "flip", "preloaded", "pillR", "pillBounce", "pillDensity", "pillFriction", "pillAir", "pillInertia"];
+    const behaviorFields = ["density", "restitution", "friction", "frictionAir", "inertia", "speed", "power", "travel", "mode", "startPos", "triggerAction", "driveMode", "flip", "dropSide", "preloaded", "pillR", "pillBounce", "pillDensity", "pillFriction", "pillAir", "pillInertia"];
 
     const hasPos = posFields.some((k) => schema.includes(k));
     const hasDim = dimFields.some((k) => schema.includes(k));
