@@ -1,0 +1,179 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Brand palette */
+:root {
+    --brand-amber:   #F5A623;
+    --brand-magenta: #E91E8C;
+    --brand-black:   #1A1A1A;
+}
+
+@layer base {
+    body {
+        @apply bg-stone-100 text-slate-900;
+        background-image:
+            radial-gradient(circle at top left,  rgba(245, 166, 35,  0.08), transparent 28rem),
+            radial-gradient(circle at top right, rgba(233, 30,  140, 0.06), transparent 22rem),
+            linear-gradient(180deg, #f8fafc 0%, #f5f5f4 100%);
+    }
+}
+
+@layer components {
+    .shell {
+        @apply mx-auto w-full max-w-[96rem] px-4 sm:px-6 lg:px-7 2xl:px-8;
+    }
+
+    .panel {
+        @apply overflow-hidden rounded-3xl border border-white/70 bg-white/90 shadow-[0_20px_50px_-24px_rgba(15,23,42,0.35)] backdrop-blur;
+    }
+
+    .panel-soft {
+        @apply rounded-2xl border border-stone-200/80 bg-stone-50/90;
+    }
+
+    .page-title {
+        @apply text-3xl font-semibold tracking-tight text-slate-950;
+    }
+
+    .page-kicker {
+        @apply text-xs font-semibold uppercase tracking-[0.28em];
+        color: var(--brand-amber);
+    }
+
+    .metric-card {
+        @apply panel flex flex-col justify-between gap-4 p-5 xl:p-6;
+    }
+
+    .metric-label {
+        @apply text-xs font-semibold uppercase tracking-[0.18em] text-slate-500;
+    }
+
+    .metric-value {
+        @apply text-3xl font-semibold text-slate-950;
+    }
+
+    .button-primary {
+        @apply inline-flex items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-medium text-white transition;
+        background-color: var(--brand-magenta);
+    }
+    .button-primary:hover {
+        background-color: #d4167c;
+    }
+
+    .button-secondary {
+        @apply inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50;
+    }
+
+    .field {
+        @apply mt-2 w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400;
+    }
+    .field:focus {
+        border-color: var(--brand-amber);
+        box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.15);
+    }
+
+    .field-label {
+        @apply text-sm font-medium text-slate-700;
+    }
+
+    .table-wrap {
+        @apply panel overflow-hidden;
+    }
+
+    .table {
+        @apply min-w-full divide-y divide-stone-200 text-sm;
+    }
+
+    .table thead {
+        @apply bg-stone-50 text-left text-xs uppercase tracking-[0.18em] text-slate-500;
+    }
+
+    .table th {
+        @apply px-4 py-3 font-semibold;
+    }
+
+    .table td {
+        @apply px-4 py-4 align-top text-slate-700;
+    }
+
+    .board-grid {
+        @apply grid gap-5 md:grid-cols-2 xl:grid-cols-4;
+    }
+
+    .board-column {
+        @apply panel flex h-full flex-col p-5 transition;
+    }
+
+    .board-column.is-drop-target {
+        border-color: rgba(245, 166, 35, 0.6);
+        box-shadow: 0 24px 60px -32px rgba(245, 166, 35, 0.35);
+    }
+
+    .board-column__header {
+        @apply flex items-start justify-between gap-4 border-b border-stone-200 pb-5;
+    }
+
+    .board-list {
+        @apply mt-5 flex flex-1 flex-col gap-4;
+        min-height: 18rem;
+    }
+
+    .task-card {
+        @apply rounded-3xl border border-stone-200 bg-white p-5 shadow-sm transition;
+    }
+
+    .task-card--compact {
+        @apply rounded-[1.75rem] p-4;
+    }
+
+    .task-card.is-dragging {
+        @apply rotate-1 opacity-80 shadow-xl;
+        border-color: var(--brand-amber);
+    }
+
+    .task-card__link {
+        @apply block w-full rounded-2xl outline-none transition hover:opacity-90;
+    }
+    .task-card__link:focus-visible {
+        box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.25);
+    }
+
+    .drag-handle {
+        @apply rounded-full border border-dashed border-stone-300 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400;
+    }
+
+    .task-open-pill {
+        @apply inline-flex items-center rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 transition hover:border-stone-300 hover:text-slate-700;
+    }
+
+    .progress-track {
+        @apply mt-3 h-2 overflow-hidden rounded-full bg-stone-200;
+    }
+
+    .progress-fill {
+        @apply block h-full rounded-full;
+        background-color: var(--brand-amber);
+    }
+
+    .task-drawer-panel {
+        transform: translateX(100%);
+        transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .task-drawer-panel--open {
+        transform: translateX(0);
+    }
+
+    .modal-header {
+        @apply border-b border-stone-200 px-7 py-6;
+    }
+
+    .modal-body {
+        @apply max-h-[75vh] overflow-y-auto p-7;
+    }
+
+    .modal-footer {
+        @apply flex justify-end gap-3 border-t border-stone-200 px-7 py-5;
+    }
+}

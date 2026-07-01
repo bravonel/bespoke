@@ -1,4 +1,0 @@
-- generic [active] [ref=e1]:
-  - main "Bespoke Rube Goldberg machine builder" [ref=e2]:
-    - generic "Machine editor canvas" [ref=e53]
-  - button "✕ Exit" [ref=e65] [cursor=pointer]
