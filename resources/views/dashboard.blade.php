@@ -49,13 +49,13 @@
                     <div class="mt-1 text-sm text-slate-500">{{ $selectedDate->format('d M Y') }}</div>
                 </div>
 
-                <form method="GET" action="{{ route('dashboard') }}" class="grid w-full gap-3 sm:grid-cols-2 lg:w-auto lg:grid-cols-[10rem_10rem_18rem_auto] lg:items-end">
-                    <div>
+                <form method="GET" action="{{ route('dashboard') }}" class="flex w-full flex-wrap items-end gap-x-3 gap-y-5 lg:w-auto lg:justify-end">
+                    <div class="w-full sm:w-40">
                         <label class="field-label block" for="daily-date">Fecha</label>
                         <input id="daily-date" type="date" name="date" class="field mt-1.5 py-2.5" value="{{ $selectedDate->format('Y-m-d') }}">
                     </div>
 
-                    <div>
+                    <div class="w-full sm:w-40">
                         <label class="field-label block" for="daily-area">Área</label>
                         <select id="daily-area" name="area" class="field mt-1.5 py-2.5">
                             <option value="">Todas</option>
@@ -65,7 +65,7 @@
                         </select>
                     </div>
 
-                    <div class="sm:col-span-2 lg:col-span-1">
+                    <div class="w-full sm:w-72">
                         <label class="field-label block" for="daily-user">Usuario</label>
                         <select id="daily-user" name="user_id" class="field mt-1.5 py-2.5">
                             <option value="">Todos</option>
@@ -79,7 +79,7 @@
                         </select>
                     </div>
 
-                    <button class="button-primary h-[2.875rem] sm:col-span-2 lg:col-span-1">Aplicar</button>
+                    <button class="button-primary h-12 w-full sm:w-auto">Aplicar</button>
                 </form>
             </div>
 
