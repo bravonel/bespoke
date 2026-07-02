@@ -7,6 +7,7 @@ El dominio `bespokeadvertising.com.mx` no sirve directamente el checkout de Git.
 - Repositorio cPanel: `/home/bespokea/repositories/bespoke`
 - App Laravel que sirve el dominio: `/home/bespokea/apps/bespoke-os`
 - Front controller público: `/home/bespokea/public_html/index.php`
+- Assets públicos: `/home/bespokea/public_html/build`
 
 `public_html/index.php` carga Laravel desde `../apps/bespoke-os`, por eso los cambios de GitHub deben sincronizarse a esa carpeta antes de verse online.
 
@@ -27,7 +28,8 @@ El script:
 - sincroniza el codigo del repo hacia `/home/bespokea/apps/bespoke-os`;
 - preserva `.env`, `storage`, `vendor`, `node_modules` y la base SQLite;
 - instala dependencias PHP;
-- reconstruye assets de Vite;
+- reconstruye assets de Vite cuando `npm` está disponible;
+- copia `public/build` y `public/assets` hacia `public_html` para que el dominio sirva el CSS/JS correcto;
 - corre migraciones;
 - limpia y recompila caches de Laravel.
 

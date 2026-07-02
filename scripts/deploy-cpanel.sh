@@ -3,12 +3,14 @@ set -euo pipefail
 
 SOURCE_DIR="${SOURCE_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 TARGET_DIR="${TARGET_DIR:-/home/bespokea/apps/bespoke-os}"
+PUBLIC_DIR="${PUBLIC_DIR:-/home/bespokea/public_html}"
 BACKUP_ROOT="${BACKUP_ROOT:-/home/bespokea/backups/bespoke-os}"
 STAMP="$(date +%Y%m%d%H%M%S)"
 
 echo "Deploying Bespoke OS"
 echo "Source: ${SOURCE_DIR}"
 echo "Target: ${TARGET_DIR}"
+echo "Public: ${PUBLIC_DIR}"
 
 if [ ! -f "${SOURCE_DIR}/artisan" ]; then
     echo "Source does not look like a Laravel app: ${SOURCE_DIR}" >&2
@@ -55,6 +57,19 @@ if command -v npm >/dev/null 2>&1; then
     npm run build
 else
     echo "npm not found; skipping Vite build" >&2
+fi
+
+if [ ! -d "${TARGET_DIR}/public/build" ]; then
+    echo "Missing compiled assets: ${TARGET_DIR}/public/build" >&2
+    exit 1
+fi
+
+mkdir -p "${PUBLIC_DIR}/build"
+rsync -a --delete "${TARGET_DIR}/public/build/" "${PUBLIC_DIR}/build/"
+
+if [ -d "${TARGET_DIR}/public/assets" ]; then
+    mkdir -p "${PUBLIC_DIR}/assets"
+    rsync -a --delete "${TARGET_DIR}/public/assets/" "${PUBLIC_DIR}/assets/"
 fi
 
 php artisan migrate --force
