@@ -17,6 +17,7 @@ class Project extends Model
         'owner_id',
         'name',
         'code',
+        'odt_code',
         'project_type',
         'priority',
         'status',
@@ -54,6 +55,16 @@ class Project extends Model
     public function tasks(): HasMany
     {
         return $this->hasMany(Task::class);
+    }
+
+    public function operationalCode(): string
+    {
+        return $this->odt_code ?: $this->code;
+    }
+
+    public function operationalCodeLabel(): string
+    {
+        return $this->odt_code ? 'ODT '.$this->odt_code : $this->code;
     }
 
     public static function statusOptions(): array

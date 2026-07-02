@@ -34,7 +34,12 @@ class ProjectController extends Controller
         }
 
         if ($search = $request->string('q')->toString()) {
-            $query->where('name', 'like', "%{$search}%");
+            $query->where(function ($subquery) use ($search) {
+                $subquery
+                    ->where('name', 'like', "%{$search}%")
+                    ->orWhere('code', 'like', "%{$search}%")
+                    ->orWhere('odt_code', 'like', "%{$search}%");
+            });
         }
 
         return view('projects.index', [
@@ -63,6 +68,10 @@ class ProjectController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        $request->merge([
+            'odt_code' => filled($request->input('odt_code')) ? trim((string) $request->input('odt_code')) : null,
+        ]);
+
         $validated = $request->validate([
             'client_id' => ['required', 'exists:clients,id'],
             'brand_id' => [
@@ -73,6 +82,7 @@ class ProjectController extends Controller
             ],
             'owner_id' => ['nullable', 'exists:users,id'],
             'name' => ['required', 'string', 'max:255'],
+            'odt_code' => ['nullable', 'string', 'max:255', 'unique:projects,odt_code'],
             'project_type' => ['required', 'string', 'max:255'],
             'priority' => ['required', Rule::in(Project::priorityOptions())],
             'status' => ['required', Rule::in(Project::statusOptions())],
@@ -100,6 +110,10 @@ class ProjectController extends Controller
 
     public function update(Request $request, Project $project): RedirectResponse
     {
+        $request->merge([
+            'odt_code' => filled($request->input('odt_code')) ? trim((string) $request->input('odt_code')) : null,
+        ]);
+
         $validated = $request->validate([
             'client_id' => ['required', 'exists:clients,id'],
             'brand_id' => [
@@ -110,6 +124,7 @@ class ProjectController extends Controller
             ],
             'owner_id' => ['nullable', 'exists:users,id'],
             'name' => ['required', 'string', 'max:255'],
+            'odt_code' => ['nullable', 'string', 'max:255', Rule::unique('projects', 'odt_code')->ignore($project)],
             'project_type' => ['required', 'string', 'max:255'],
             'priority' => ['required', Rule::in(Project::priorityOptions())],
             'status' => ['required', Rule::in(Project::statusOptions())],
@@ -160,6 +175,9 @@ class ProjectController extends Controller
         $overdueTasks = $project->tasks
             ->filter(fn (Task $task) => $task->status !== 'done' && $task->due_at?->isPast())
             ->count();
+        $plannedMinutes = (int) $project->tasks
+            ->whereNotIn('status', ['done'])
+            ->sum(fn (Task $task) => $task->estimated_minutes ?? 0);
         $completionRate = $project->tasks->isEmpty()
             ? 0
             : (int) round(($doneTasks / $project->tasks->count()) * 100);
@@ -183,6 +201,11 @@ class ProjectController extends Controller
                 'open_subtasks' => $openSubtasks,
                 'overdue_tasks' => $overdueTasks,
                 'unassigned_tasks' => $project->tasks->whereNull('assigned_to')->count(),
+                'planned_minutes' => $plannedMinutes,
+                'missing_estimates' => $project->tasks
+                    ->whereNotIn('status', ['done'])
+                    ->whereNull('estimated_minutes')
+                    ->count(),
                 'completion_rate' => $completionRate,
             ],
         ]);

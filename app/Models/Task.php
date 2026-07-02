@@ -19,6 +19,8 @@ class Task extends Model
         'status',
         'priority',
         'sort_order',
+        'planned_for',
+        'estimated_minutes',
         'due_at',
         'completed_at',
     ];
@@ -27,6 +29,8 @@ class Task extends Model
     {
         return [
             'due_at' => 'date',
+            'planned_for' => 'date',
+            'estimated_minutes' => 'integer',
             'completed_at' => 'datetime',
             'sort_order' => 'integer',
         ];
@@ -86,5 +90,20 @@ class Task extends Model
     public static function priorityOptions(): array
     {
         return array_keys(static::priorityMeta());
+    }
+
+    public static function formatEstimatedMinutes(?int $minutes): string
+    {
+        if ($minutes === null) {
+            return 'Sin horas';
+        }
+
+        $hours = $minutes / 60;
+
+        if ($minutes % 60 === 0) {
+            return (int) $hours.' h';
+        }
+
+        return number_format($hours, 1).' h';
     }
 }

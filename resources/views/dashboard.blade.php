@@ -42,6 +42,169 @@
             </div>
         </div>
 
+        <section class="panel p-6">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold text-slate-950">Carga diaria</h2>
+                    <div class="mt-1 text-sm text-slate-500">{{ $selectedDate->format('d M Y') }}</div>
+                </div>
+
+                <form method="GET" action="{{ route('dashboard') }}" class="flex flex-wrap items-end gap-3">
+                    <div class="min-w-[10rem]">
+                        <label class="field-label" for="daily-date">Fecha</label>
+                        <input id="daily-date" type="date" name="date" class="field mt-0 py-2.5" value="{{ $selectedDate->format('Y-m-d') }}">
+                    </div>
+
+                    <div class="min-w-[10rem]">
+                        <label class="field-label" for="daily-area">Área</label>
+                        <select id="daily-area" name="area" class="field mt-0 py-2.5">
+                            <option value="">Todas</option>
+                            @foreach ($areas as $area)
+                                <option value="{{ $area }}" @selected($dailyFilters['area'] === $area)>{{ $area }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="min-w-[12rem]">
+                        <label class="field-label" for="daily-user">Usuario</label>
+                        <select id="daily-user" name="user_id" class="field mt-0 py-2.5">
+                            <option value="">Todos</option>
+                            @foreach ($users->groupBy('area') as $area => $areaUsers)
+                                <optgroup label="{{ $area ?: 'Sin área' }}">
+                                    @foreach ($areaUsers as $user)
+                                        <option value="{{ $user->id }}" @selected($dailyFilters['user_id'] === $user->id)>{{ $user->name }}</option>
+                                    @endforeach
+                                </optgroup>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <button class="button-primary">Aplicar</button>
+                </form>
+            </div>
+
+            <div class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                <div class="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
+                    <div class="metric-label">Tareas</div>
+                    <div class="mt-2 text-2xl font-semibold text-slate-950">{{ $dailySummary['tasks'] }}</div>
+                </div>
+                <div class="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
+                    <div class="metric-label">Horas</div>
+                    <div class="mt-2 text-2xl font-semibold text-slate-950">{{ \App\Models\Task::formatEstimatedMinutes($dailySummary['estimated_minutes']) }}</div>
+                </div>
+                <div class="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
+                    <div class="metric-label">Bloqueadas</div>
+                    <div class="mt-2 text-2xl font-semibold text-slate-950">{{ $dailySummary['blocked'] }}</div>
+                </div>
+                <div class="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
+                    <div class="metric-label">Vencidas</div>
+                    <div class="mt-2 text-2xl font-semibold text-slate-950">{{ $dailySummary['overdue'] }}</div>
+                </div>
+                <div class="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
+                    <div class="metric-label">Sobrecarga</div>
+                    <div class="mt-2 text-2xl font-semibold text-slate-950">{{ $dailySummary['over_capacity_users'] }}</div>
+                </div>
+            </div>
+
+            <div class="mt-6 space-y-4">
+                @forelse ($dailyLoadRows as $row)
+                    @php
+                        $assignee = $row['assignee'];
+                        $overCapacity = $row['estimated_minutes'] > $row['capacity_minutes'];
+                    @endphp
+
+                    <div class="rounded-2xl border border-stone-200 bg-white p-4">
+                        <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                            <div class="min-w-0">
+                                <div class="font-semibold text-slate-950">{{ $assignee?->name ?: 'Sin asignar' }}</div>
+                                <div class="mt-1 text-sm text-slate-500">
+                                    {{ $assignee?->area ?: 'Sin área' }}
+                                    @if ($assignee?->puesto)
+                                        · {{ $assignee->puesto }}
+                                    @endif
+                                </div>
+                            </div>
+
+                            <div class="grid gap-2 text-sm sm:grid-cols-4 lg:min-w-[34rem]">
+                                <div class="rounded-xl bg-stone-50 px-3 py-2">
+                                    <div class="text-xs uppercase tracking-[0.16em] text-slate-400">Tareas</div>
+                                    <div class="mt-1 font-semibold text-slate-900">{{ $row['task_count'] }}</div>
+                                </div>
+                                <div class="rounded-xl bg-stone-50 px-3 py-2">
+                                    <div class="text-xs uppercase tracking-[0.16em] text-slate-400">Carga</div>
+                                    <div class="mt-1 font-semibold {{ $overCapacity ? 'text-rose-700' : 'text-slate-900' }}">
+                                        {{ \App\Models\Task::formatEstimatedMinutes($row['estimated_minutes']) }} / {{ \App\Models\Task::formatEstimatedMinutes($row['capacity_minutes']) }}
+                                    </div>
+                                </div>
+                                <div class="rounded-xl bg-stone-50 px-3 py-2">
+                                    <div class="text-xs uppercase tracking-[0.16em] text-slate-400">Bloqueadas</div>
+                                    <div class="mt-1 font-semibold text-slate-900">{{ $row['blocked_count'] }}</div>
+                                </div>
+                                <div class="rounded-xl bg-stone-50 px-3 py-2">
+                                    <div class="text-xs uppercase tracking-[0.16em] text-slate-400">Sin horas</div>
+                                    <div class="mt-1 font-semibold text-slate-900">{{ $row['missing_estimate_count'] }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 h-2 overflow-hidden rounded-full bg-stone-200">
+                            <span class="block h-full rounded-full {{ $overCapacity ? 'bg-rose-500' : 'bg-emerald-500' }}" style="width: {{ $row['capacity_percent'] }}%"></span>
+                        </div>
+
+                        <div class="mt-4 overflow-x-auto">
+                            <table class="min-w-full text-sm">
+                                <thead class="text-left text-xs uppercase tracking-[0.16em] text-slate-400">
+                                    <tr>
+                                        <th class="py-2 pr-4 font-semibold">Tarea</th>
+                                        <th class="py-2 pr-4 font-semibold">Proyecto</th>
+                                        <th class="py-2 pr-4 font-semibold">ODT</th>
+                                        <th class="py-2 pr-4 font-semibold">Status</th>
+                                        <th class="py-2 pr-4 font-semibold">Horas</th>
+                                        <th class="py-2 pr-4 font-semibold">Vence</th>
+                                        <th class="py-2 font-semibold"></th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-stone-100">
+                                    @foreach ($row['tasks'] as $task)
+                                        <tr>
+                                            <td class="py-3 pr-4 font-medium text-slate-900">{{ $task->title }}</td>
+                                            <td class="py-3 pr-4 text-slate-600">
+                                                <div>{{ $task->project->name }}</div>
+                                                <div class="text-xs text-slate-400">
+                                                    {{ $task->project->client->name }}
+                                                    @if ($task->project->brand)
+                                                        · {{ $task->project->brand->name }}
+                                                    @endif
+                                                </div>
+                                            </td>
+                                            <td class="py-3 pr-4 text-slate-600">{{ $task->project->odt_code ?: 'Sin ODT' }}</td>
+                                            <td class="py-3 pr-4"><x-status-badge :value="$task->status" /></td>
+                                            <td class="py-3 pr-4 text-slate-600">{{ \App\Models\Task::formatEstimatedMinutes($task->estimated_minutes) }}</td>
+                                            <td class="py-3 pr-4 text-slate-600">{{ $task->due_at?->format('d M Y') ?: 'Sin fecha' }}</td>
+                                            <td class="py-3 text-right">
+                                                @if ($task->status !== 'done')
+                                                    <form method="POST" action="{{ route('tasks.update-schedule', $task) }}">
+                                                        @csrf
+                                                        @method('PATCH')
+                                                        <input type="hidden" name="planned_for" value="{{ today()->addDay()->format('Y-m-d') }}">
+                                                        <button class="button-secondary px-3 py-1.5 text-xs">Pasar a mañana</button>
+                                                    </form>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                @empty
+                    <div class="rounded-2xl border border-dashed border-stone-300 bg-stone-50 px-4 py-5 text-sm text-slate-500">
+                        No hay tareas planeadas para esta fecha.
+                    </div>
+                @endforelse
+            </div>
+        </section>
+
         <div class="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
             <div class="panel p-6">
                 <div class="flex items-center justify-between gap-4">

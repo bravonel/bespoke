@@ -53,6 +53,7 @@ class DatabaseSeeder extends Seeder
                     'name'              => $data['name'],
                     'area'              => $data['area'],
                     'puesto'            => $data['puesto'],
+                    'daily_capacity_minutes' => 480,
                     'password'          => $password,
                     'email_verified_at' => now(),
                 ]

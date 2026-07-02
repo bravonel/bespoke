@@ -23,7 +23,7 @@
         <form method="GET" action="{{ route('projects.index') }}" class="flex flex-wrap items-end gap-3">
             <div class="min-w-[12rem] flex-1">
                 <label class="field-label" for="f-q">Buscar</label>
-                <input id="f-q" type="text" name="q" class="field mt-0" placeholder="Nombre del proyecto…" value="{{ $filters['q'] ?? '' }}">
+                <input id="f-q" type="text" name="q" class="field mt-0" placeholder="Nombre, ODT o código…" value="{{ $filters['q'] ?? '' }}">
             </div>
 
             <div class="min-w-[10rem]">
@@ -84,7 +84,10 @@
                         <tr>
                             <td>
                                 <div class="font-semibold text-slate-900">{{ $project->name }}</div>
-                                <div class="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">{{ $project->code }}</div>
+                                <div class="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">{{ $project->operationalCodeLabel() }}</div>
+                                @if ($project->odt_code)
+                                    <div class="mt-1 text-[11px] uppercase tracking-[0.16em] text-slate-400">{{ $project->code }}</div>
+                                @endif
                                 <div class="mt-2 text-xs text-slate-500">{{ $project->tasks_count }} tareas</div>
                             </td>
                             <td>
@@ -141,6 +144,12 @@
                         <label class="field-label" for="project-name">Nombre del proyecto</label>
                         <input id="project-name" name="name" class="field" value="{{ old('name') }}" required>
                         <x-input-error :messages="$errors->get('name')" class="mt-2" />
+                    </div>
+
+                    <div>
+                        <label class="field-label" for="project-odt-code">ODT / Orden de compra</label>
+                        <input id="project-odt-code" name="odt_code" class="field" value="{{ old('odt_code') }}">
+                        <x-input-error :messages="$errors->get('odt_code')" class="mt-2" />
                     </div>
 
                     <div>

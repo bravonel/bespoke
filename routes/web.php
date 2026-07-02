@@ -38,6 +38,7 @@ Route::middleware('auth')->group(function (): void {
     Route::patch('tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
     Route::delete('tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
     Route::post('projects/{project}/tasks', [TaskController::class, 'store'])->name('projects.tasks.store');
+    Route::patch('tasks/{task}/schedule', [TaskController::class, 'updateSchedule'])->name('tasks.update-schedule');
     Route::patch('tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('tasks.update-status');
     Route::patch('tasks/{task}/move', [TaskController::class, 'move'])->name('tasks.move');
     Route::post('tasks/{task}/subtasks', [SubtaskController::class, 'store'])->name('tasks.subtasks.store');
