@@ -49,15 +49,15 @@
                     <div class="mt-1 text-sm text-slate-500">{{ $selectedDate->format('d M Y') }}</div>
                 </div>
 
-                <form method="GET" action="{{ route('dashboard') }}" class="flex flex-wrap items-end gap-3">
-                    <div class="min-w-[10rem]">
-                        <label class="field-label" for="daily-date">Fecha</label>
-                        <input id="daily-date" type="date" name="date" class="field mt-0 py-2.5" value="{{ $selectedDate->format('Y-m-d') }}">
+                <form method="GET" action="{{ route('dashboard') }}" class="grid w-full gap-3 sm:grid-cols-2 lg:w-auto lg:grid-cols-[10rem_10rem_18rem_auto] lg:items-end">
+                    <div>
+                        <label class="field-label block" for="daily-date">Fecha</label>
+                        <input id="daily-date" type="date" name="date" class="field mt-1.5 py-2.5" value="{{ $selectedDate->format('Y-m-d') }}">
                     </div>
 
-                    <div class="min-w-[10rem]">
-                        <label class="field-label" for="daily-area">Área</label>
-                        <select id="daily-area" name="area" class="field mt-0 py-2.5">
+                    <div>
+                        <label class="field-label block" for="daily-area">Área</label>
+                        <select id="daily-area" name="area" class="field mt-1.5 py-2.5">
                             <option value="">Todas</option>
                             @foreach ($areas as $area)
                                 <option value="{{ $area }}" @selected($dailyFilters['area'] === $area)>{{ $area }}</option>
@@ -65,9 +65,9 @@
                         </select>
                     </div>
 
-                    <div class="min-w-[12rem]">
-                        <label class="field-label" for="daily-user">Usuario</label>
-                        <select id="daily-user" name="user_id" class="field mt-0 py-2.5">
+                    <div class="sm:col-span-2 lg:col-span-1">
+                        <label class="field-label block" for="daily-user">Usuario</label>
+                        <select id="daily-user" name="user_id" class="field mt-1.5 py-2.5">
                             <option value="">Todos</option>
                             @foreach ($users->groupBy('area') as $area => $areaUsers)
                                 <optgroup label="{{ $area ?: 'Sin área' }}">
@@ -79,11 +79,11 @@
                         </select>
                     </div>
 
-                    <button class="button-primary">Aplicar</button>
+                    <button class="button-primary h-[2.875rem] sm:col-span-2 lg:col-span-1">Aplicar</button>
                 </form>
             </div>
 
-            <div class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <div class="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                 <div class="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
                     <div class="metric-label">Tareas</div>
                     <div class="mt-2 text-2xl font-semibold text-slate-950">{{ $dailySummary['tasks'] }}</div>
