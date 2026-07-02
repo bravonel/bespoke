@@ -1,0 +1,6 @@
+---
+deployment:
+  tasks:
+    - export SOURCE_DIR=/home/bespokea/repositories/bespoke
+    - export TARGET_DIR=/home/bespokea/apps/bespoke-os
+    - /bin/bash /home/bespokea/repositories/bespoke/scripts/deploy-cpanel.sh
