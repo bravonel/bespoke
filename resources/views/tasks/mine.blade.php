@@ -4,7 +4,7 @@
             <div>
                 <p class="page-kicker">Mi espacio</p>
                 <h1 class="page-title mt-2">Mis tareas</h1>
-                <p class="mt-2 max-w-2xl text-sm text-slate-600">Todo lo que tienes asignado, ordenado por urgencia. Bloqueadas primero, después lo que está en curso y luego los pendientes.</p>
+                <p class="mt-2 max-w-2xl text-sm text-slate-600">Tu carga de hoy, próximos pendientes y tareas sin fecha de trabajo.</p>
             </div>
 
             @if ($overdue > 0)
@@ -24,28 +24,25 @@
         @else
 
             @php
-                $sections = [
-                    'blocked'     => ['label' => 'Bloqueadas', 'color' => 'rose'],
-                    'in_progress' => ['label' => 'En curso', 'color' => 'amber'],
-                    'todo'        => ['label' => 'Por hacer', 'color' => 'slate'],
-                    'done'        => ['label' => 'Listas', 'color' => 'emerald'],
+                $sectionMeta = [
+                    'today'       => ['label' => 'Hoy', 'description' => \App\Models\Task::formatEstimatedMinutes($todayEstimatedMinutes).' planeadas'],
+                    'upcoming'    => ['label' => 'Próximas', 'description' => 'Planeadas después de hoy'],
+                    'unscheduled' => ['label' => 'Sin fecha de trabajo', 'description' => 'Tienen responsable pero no día asignado'],
+                    'done'        => ['label' => 'Listas', 'description' => 'Tareas ya cerradas'],
                 ];
             @endphp
 
-            @foreach ($sections as $status => $section)
-                @if ($grouped[$status]->isNotEmpty())
+            @foreach ($sectionMeta as $sectionKey => $section)
+                @if ($sections[$sectionKey]->isNotEmpty())
                     <section>
-                        <div class="mb-4 flex items-center gap-3">
-                            <h2 class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                                {{ $section['label'] }}
-                            </h2>
-                            <span class="rounded-full bg-stone-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
-                                {{ $grouped[$status]->count() }}
-                            </span>
+                        <div class="mb-4 flex flex-wrap items-center gap-3">
+                            <h2 class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{{ $section['label'] }}</h2>
+                            <span class="rounded-full bg-stone-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">{{ $sections[$sectionKey]->count() }}</span>
+                            <span class="text-sm text-slate-500">{{ $section['description'] }}</span>
                         </div>
 
                         <div class="space-y-3">
-                            @foreach ($grouped[$status] as $task)
+                            @foreach ($sections[$sectionKey] as $task)
                                 @php
                                     $isOverdue = $task->status !== 'done' && $task->due_at?->isPast();
                                     $subtaskProgress = $task->subtasks_count > 0
@@ -80,7 +77,15 @@
                                                     {{ $isOverdue
                                                         ? 'border-rose-200 bg-rose-50 text-rose-700'
                                                         : 'border-stone-200 bg-stone-50 text-slate-500' }}">
-                                                    {{ $task->due_at?->format('d M Y') ?: 'Sin fecha' }}
+                                                    Vence {{ $task->due_at?->format('d M Y') ?: 'sin fecha' }}
+                                                </span>
+
+                                                <span class="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs font-semibold text-slate-500">
+                                                    Plan {{ $task->planned_for?->format('d M Y') ?: 'sin fecha' }}
+                                                </span>
+
+                                                <span class="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs font-semibold text-slate-500">
+                                                    {{ \App\Models\Task::formatEstimatedMinutes($task->estimated_minutes) }}
                                                 </span>
 
                                                 @if ($task->subtasks_count > 0)
@@ -98,6 +103,15 @@
                                             onclick="event.stopPropagation()"
                                         >Ver tablero →</a>
                                     </div>
+
+                                    @if ($task->status !== 'done')
+                                        <form method="POST" action="{{ route('tasks.update-schedule', $task) }}" class="mt-4" onclick="event.stopPropagation()">
+                                            @csrf
+                                            @method('PATCH')
+                                            <input type="hidden" name="planned_for" value="{{ today()->addDay()->format('Y-m-d') }}">
+                                            <button class="button-secondary px-3 py-1.5 text-xs">Pasar a mañana</button>
+                                        </form>
+                                    @endif
 
                                     @if ($task->subtasks_count > 0)
                                         <div class="mt-4">

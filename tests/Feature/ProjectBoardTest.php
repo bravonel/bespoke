@@ -25,6 +25,8 @@ class ProjectBoardTest extends TestCase
             'assigned_to' => $user->id,
             'status' => 'todo',
             'priority' => 'high',
+            'planned_for' => '2026-07-02',
+            'estimated_hours' => '2.5',
             'due_at' => '2026-07-05',
             'subtasks' => "Validar brief\nArmar layout\nMandar a medico",
         ]);
@@ -34,10 +36,68 @@ class ProjectBoardTest extends TestCase
         $task = Task::query()->where('title', 'Preparar material')->firstOrFail();
 
         $this->assertSame(3, $task->subtasks()->count());
+        $this->assertSame('2026-07-02', $task->planned_for->format('Y-m-d'));
+        $this->assertSame(150, $task->estimated_minutes);
         $this->assertDatabaseHas('subtasks', [
             'task_id' => $task->id,
             'title' => 'Armar layout',
         ]);
+    }
+
+    public function test_daily_load_is_displayed_on_dashboard(): void
+    {
+        $user = User::factory()->create([
+            'name' => 'Persona de Arte',
+            'area' => 'Arte',
+            'daily_capacity_minutes' => 480,
+        ]);
+        $project = $this->makeProject($user);
+
+        Task::create([
+            'project_id' => $project->id,
+            'assigned_to' => $user->id,
+            'title' => 'Ajustar storyboard',
+            'status' => 'todo',
+            'priority' => 'normal',
+            'planned_for' => today(),
+            'estimated_minutes' => 240,
+            'sort_order' => 0,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('dashboard', [
+            'date' => today()->format('Y-m-d'),
+        ]));
+
+        $response
+            ->assertOk()
+            ->assertSee('Carga diaria')
+            ->assertSee('Persona de Arte')
+            ->assertSee('Ajustar storyboard')
+            ->assertSee('4 h / 8 h');
+    }
+
+    public function test_projects_can_store_an_odt_code(): void
+    {
+        $user = User::factory()->create();
+        $client = Client::create([
+            'name' => 'Roche',
+            'status' => 'active',
+        ]);
+
+        $response = $this->actingAs($user)->post(route('projects.store'), [
+            'client_id' => $client->id,
+            'name' => 'Video MOA',
+            'odt_code' => 'ODT-13041',
+            'project_type' => 'video',
+            'priority' => 'normal',
+            'status' => 'active',
+            'current_stage' => 'brief',
+        ]);
+
+        $project = Project::query()->where('odt_code', 'ODT-13041')->firstOrFail();
+
+        $response->assertRedirect(route('projects.show', $project));
+        $this->assertSame('ODT ODT-13041', $project->operationalCodeLabel());
     }
 
     public function test_tasks_can_be_moved_between_board_columns(): void

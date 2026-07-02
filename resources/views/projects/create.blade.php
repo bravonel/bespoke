@@ -24,6 +24,12 @@
                     </div>
 
                     <div>
+                        <label class="field-label" for="project-odt-code">ODT / Orden de compra</label>
+                        <input id="project-odt-code" name="odt_code" class="field" value="{{ old('odt_code') }}">
+                        <x-input-error :messages="$errors->get('odt_code')" class="mt-2" />
+                    </div>
+
+                    <div>
                         <label class="field-label" for="project-type">Tipo</label>
                         <input id="project-type" name="project_type" class="field" value="{{ old('project_type', 'campana') }}" required>
                     </div>

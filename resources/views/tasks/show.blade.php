@@ -2,7 +2,7 @@
     <x-slot name="header">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-                <p class="page-kicker">{{ $task->project->code }} · Tarea</p>
+                <p class="page-kicker">{{ $task->project->operationalCodeLabel() }} · Tarea</p>
                 <h1 class="page-title">{{ $task->title }}</h1>
                 <p class="mt-2 max-w-2xl text-sm text-slate-600">
                     {{ $task->project->name }}
@@ -21,7 +21,7 @@
     </x-slot>
 
     <div class="shell space-y-7">
-        <div class="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="grid gap-5 sm:grid-cols-2 xl:grid-cols-5">
             <div class="metric-card">
                 <div class="metric-label">Responsable</div>
                 <div class="mt-3 text-lg font-semibold text-slate-950">{{ $task->assignee?->name ?: 'Sin asignar' }}</div>
@@ -33,6 +33,11 @@
             <div class="metric-card">
                 <div class="metric-label">Prioridad</div>
                 <div class="mt-3 text-lg font-semibold text-slate-950">{{ $taskPriorityMeta[$task->priority]['label'] }}</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Plan diario</div>
+                <div class="mt-3 text-lg font-semibold text-slate-950">{{ $task->planned_for?->format('d M Y') ?: 'Sin fecha' }}</div>
+                <div class="text-sm font-semibold text-slate-500">{{ \App\Models\Task::formatEstimatedMinutes($task->estimated_minutes) }}</div>
             </div>
             <div class="metric-card">
                 <div class="metric-label">Checklist</div>
@@ -57,6 +62,10 @@
                     <div class="flex justify-between gap-4 border-b border-stone-200 pb-3">
                         <dt class="text-slate-500">Marca</dt>
                         <dd class="font-medium text-slate-900">{{ $task->project->brand?->name ?: 'Sin marca' }}</dd>
+                    </div>
+                    <div class="flex justify-between gap-4 border-b border-stone-200 pb-3">
+                        <dt class="text-slate-500">ODT</dt>
+                        <dd class="font-medium text-slate-900">{{ $task->project->odt_code ?: 'Sin ODT' }}</dd>
                     </div>
                     <div class="flex justify-between gap-4 border-b border-stone-200 pb-3">
                         <dt class="text-slate-500">Estatus</dt>

@@ -9,7 +9,7 @@
     {{-- Header --}}
     <div class="mb-5 flex items-start justify-between gap-4">
         <div class="min-w-0 flex-1">
-            <p class="page-kicker">{{ $task->project->code }} · {{ $task->project->name }}</p>
+            <p class="page-kicker">{{ $task->project->operationalCodeLabel() }} · {{ $task->project->name }}</p>
             <h2 class="mt-2 text-xl font-semibold text-slate-950" data-view>{{ $task->title }}</h2>
             <p class="mt-1 text-sm text-slate-500">
                 {{ $task->project->client->name }}
@@ -63,14 +63,31 @@
 
             @if ($task->due_at)
                 <span class="rounded-full border px-3 py-1 text-xs font-semibold {{ $isOverdue ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-stone-200 bg-stone-50 text-slate-600' }}">
-                    {{ $task->due_at->format('d M Y') }}
+                    Vence {{ $task->due_at->format('d M Y') }}
                 </span>
             @endif
+
+            <span class="rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-semibold text-slate-600">
+                Plan {{ $task->planned_for?->format('d M Y') ?: 'sin fecha' }}
+            </span>
+
+            <span class="rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-semibold text-slate-600">
+                {{ \App\Models\Task::formatEstimatedMinutes($task->estimated_minutes) }}
+            </span>
 
             @if ($task->assignee)
                 <span class="rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-semibold text-slate-600">
                     {{ $task->assignee->name }}
                 </span>
+            @endif
+
+            @if ($task->status !== 'done')
+                <form method="POST" action="{{ route('tasks.update-schedule', $task) }}">
+                    @csrf
+                    @method('PATCH')
+                    <input type="hidden" name="planned_for" value="{{ today()->addDay()->format('Y-m-d') }}">
+                    <button class="button-secondary px-3 py-1.5 text-xs">Pasar a mañana</button>
+                </form>
             @endif
         </div>
 
@@ -170,6 +187,18 @@
                 <div>
                     <label class="field-label" for="drwr-due-at">Fecha compromiso</label>
                     <input id="drwr-due-at" type="date" name="due_at" class="field" value="{{ $task->due_at?->format('Y-m-d') }}">
+                </div>
+            </div>
+
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label class="field-label" for="drwr-planned-for">Fecha de trabajo</label>
+                    <input id="drwr-planned-for" type="date" name="planned_for" class="field" value="{{ $task->planned_for?->format('Y-m-d') }}">
+                </div>
+
+                <div>
+                    <label class="field-label" for="drwr-estimated-hours">Horas estimadas</label>
+                    <input id="drwr-estimated-hours" type="number" min="0" max="24" step="0.25" name="estimated_hours" class="field" value="{{ $task->estimated_minutes !== null ? $task->estimated_minutes / 60 : '' }}">
                 </div>
             </div>
 

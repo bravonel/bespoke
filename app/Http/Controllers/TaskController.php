@@ -50,11 +50,13 @@ class TaskController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'assigned_to' => ['nullable', 'exists:users,id'],
+            'planned_for' => ['nullable', 'date'],
+            'estimated_hours' => ['nullable', 'numeric', 'min:0', 'max:24'],
             'due_at' => ['nullable', 'date'],
             'priority' => ['required', Rule::in(Task::priorityOptions())],
         ]);
 
-        $task->update($validated);
+        $task->update($this->taskAttributes($validated));
 
         return to_route('projects.show', $task->project)->with('status', 'Tarea actualizada.');
     }
@@ -75,12 +77,14 @@ class TaskController extends Controller
             'assigned_to' => ['nullable', 'exists:users,id'],
             'status' => ['required', Rule::in(Task::statusOptions())],
             'priority' => ['required', Rule::in(Task::priorityOptions())],
+            'planned_for' => ['nullable', 'date'],
+            'estimated_hours' => ['nullable', 'numeric', 'min:0', 'max:24'],
             'due_at' => ['nullable', 'date'],
             'subtasks' => ['nullable', 'string'],
         ]);
 
         $task = $project->tasks()->create([
-            ...collect($validated)->except('subtasks')->all(),
+            ...collect($this->taskAttributes($validated))->except('subtasks')->all(),
             'sort_order' => (int) $project->tasks()
                 ->where('status', $validated['status'])
                 ->max('sort_order') + 1,
@@ -97,6 +101,17 @@ class TaskController extends Controller
             ]));
 
         return to_route('projects.show', $project)->with('status', 'Tarea agregada.');
+    }
+
+    public function updateSchedule(Request $request, Task $task): RedirectResponse
+    {
+        $validated = $request->validate([
+            'planned_for' => ['required', 'date'],
+        ]);
+
+        $task->update($validated);
+
+        return back()->with('status', 'Fecha de trabajo actualizada.');
     }
 
     public function updateStatus(Request $request, Task $task): RedirectResponse
@@ -181,5 +196,22 @@ class TaskController extends Controller
                     : null,
             ]);
         }
+    }
+
+    private function taskAttributes(array $validated): array
+    {
+        $attributes = collect($validated)->except('estimated_hours')->all();
+        $attributes['estimated_minutes'] = $this->estimatedMinutes($validated['estimated_hours'] ?? null);
+
+        return $attributes;
+    }
+
+    private function estimatedMinutes(null|int|float|string $hours): ?int
+    {
+        if ($hours === null || $hours === '') {
+            return null;
+        }
+
+        return (int) round(((float) $hours) * 60);
     }
 }

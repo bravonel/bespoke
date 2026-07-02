@@ -2,12 +2,15 @@
     <x-slot name="header">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-                <p class="page-kicker">{{ $project->code }}</p>
+                <p class="page-kicker">{{ $project->operationalCodeLabel() }}</p>
                 <h1 class="page-title mt-2">{{ $project->name }}</h1>
                 <p class="mt-2 max-w-2xl text-sm text-slate-600">
                     {{ $project->client->name }}
                     @if ($project->brand)
                         · {{ $project->brand->name }}
+                    @endif
+                    @if ($project->odt_code)
+                        · Código interno {{ $project->code }}
                     @endif
                 </p>
             </div>
@@ -54,7 +57,7 @@
         x-init="$watch('boardFilter', () => applyBoardFilter())"
     >
         {{-- Metric cards --}}
-        <div class="grid gap-6 sm:grid-cols-2 xl:grid-cols-5">
+        <div class="grid gap-6 sm:grid-cols-2 xl:grid-cols-6">
             <div class="metric-card">
                 <div class="metric-label">Tareas activas</div>
                 <div class="metric-value">{{ $boardSummary['total_tasks'] - $boardSummary['done_tasks'] }}</div>
@@ -75,6 +78,13 @@
                 <div class="metric-label">Sin responsable</div>
                 <div class="metric-value">{{ $boardSummary['unassigned_tasks'] }}</div>
             </div>
+            <div class="metric-card">
+                <div class="metric-label">Horas plan</div>
+                <div class="metric-value">{{ \App\Models\Task::formatEstimatedMinutes($boardSummary['planned_minutes']) }}</div>
+                @if ($boardSummary['missing_estimates'] > 0)
+                    <div class="text-xs font-semibold text-amber-700">{{ $boardSummary['missing_estimates'] }} sin horas</div>
+                @endif
+            </div>
         </div>
 
         {{-- Resumen operativo – compact horizontal strip --}}
@@ -83,6 +93,10 @@
                 <div class="flex-1">
                     <h2 class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Resumen operativo</h2>
                     <dl class="mt-4 flex flex-wrap gap-x-8 gap-y-3 text-sm">
+                        <div class="flex items-center gap-2">
+                            <dt class="text-slate-500">ODT</dt>
+                            <dd class="font-medium text-slate-900">{{ $project->odt_code ?: 'Sin ODT' }}</dd>
+                        </div>
                         <div class="flex items-center gap-2">
                             <dt class="text-slate-500">Responsable</dt>
                             <dd class="font-medium text-slate-900">{{ $project->owner?->name ?: 'Sin asignar' }}</dd>
@@ -213,6 +227,12 @@
                                                         {{ $task->due_at?->format('d M Y') ?: 'Sin fecha' }}
                                                     </span>
                                                     <span class="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-slate-500">
+                                                        Plan {{ $task->planned_for?->format('d M') ?: 'sin fecha' }}
+                                                    </span>
+                                                    <span class="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-slate-500">
+                                                        {{ \App\Models\Task::formatEstimatedMinutes($task->estimated_minutes) }}
+                                                    </span>
+                                                    <span class="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-slate-500">
                                                         {{ $task->completed_subtasks_count }}/{{ $task->subtasks_count }} checklist
                                                     </span>
                                                     @if ($openSubtasksCount > 0)
@@ -292,6 +312,12 @@
                     <div class="lg:col-span-2">
                         <label class="field-label" for="ep-name">Nombre del proyecto</label>
                         <input id="ep-name" name="name" class="field" value="{{ $project->name }}" required>
+                    </div>
+
+                    <div>
+                        <label class="field-label" for="ep-odt-code">ODT / Orden de compra</label>
+                        <input id="ep-odt-code" name="odt_code" class="field" value="{{ old('odt_code', $project->odt_code) }}">
+                        <x-input-error :messages="$errors->get('odt_code')" class="mt-2" />
                     </div>
 
                     <div>
@@ -450,6 +476,18 @@
                         <div>
                             <label class="field-label" for="task-due-at">Fecha compromiso</label>
                             <input id="task-due-at" type="date" name="due_at" class="field" value="{{ old('due_at') }}">
+                        </div>
+
+                        <div>
+                            <label class="field-label" for="task-planned-for">Fecha de trabajo</label>
+                            <input id="task-planned-for" type="date" name="planned_for" class="field" value="{{ old('planned_for', today()->format('Y-m-d')) }}">
+                            <x-input-error :messages="$errors->get('planned_for')" class="mt-2" />
+                        </div>
+
+                        <div>
+                            <label class="field-label" for="task-estimated-hours">Horas estimadas</label>
+                            <input id="task-estimated-hours" type="number" min="0" max="24" step="0.25" name="estimated_hours" class="field" value="{{ old('estimated_hours') }}">
+                            <x-input-error :messages="$errors->get('estimated_hours')" class="mt-2" />
                         </div>
 
                         <div>

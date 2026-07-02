@@ -10,6 +10,7 @@ class MyTasksController extends Controller
     public function __invoke(): View
     {
         $userId = auth()->id();
+        $today = today();
 
         $tasks = Task::query()
             ->where('assigned_to', $userId)
@@ -23,15 +24,25 @@ class MyTasksController extends Controller
                 'subtasks as completed_subtasks_count' => fn ($q) => $q->where('is_done', true),
             ])
             ->orderByRaw("CASE status WHEN 'blocked' THEN 0 WHEN 'in_progress' THEN 1 WHEN 'todo' THEN 2 ELSE 3 END")
+            ->orderByRaw('planned_for is null')
+            ->orderBy('planned_for')
             ->orderBy('due_at')
             ->orderBy('id')
             ->get();
 
-        $grouped = [
-            'blocked'     => $tasks->where('status', 'blocked')->values(),
-            'in_progress' => $tasks->where('status', 'in_progress')->values(),
-            'todo'        => $tasks->where('status', 'todo')->values(),
-            'done'        => $tasks->where('status', 'done')->values(),
+        $openTasks = $tasks->whereNotIn('status', ['done']);
+
+        $sections = [
+            'today' => $openTasks
+                ->filter(fn (Task $task) => $task->planned_for?->isSameDay($today))
+                ->values(),
+            'upcoming' => $openTasks
+                ->filter(fn (Task $task) => $task->planned_for && $task->planned_for->greaterThan($today))
+                ->values(),
+            'unscheduled' => $openTasks
+                ->filter(fn (Task $task) => $task->planned_for === null)
+                ->values(),
+            'done' => $tasks->where('status', 'done')->values(),
         ];
 
         $overdue = $tasks
@@ -41,8 +52,9 @@ class MyTasksController extends Controller
 
         return view('tasks.mine', [
             'tasks'          => $tasks,
-            'grouped'        => $grouped,
+            'sections'       => $sections,
             'overdue'        => $overdue,
+            'todayEstimatedMinutes' => (int) $sections['today']->sum(fn (Task $task) => $task->estimated_minutes ?? 0),
             'taskStatusMeta' => Task::statusMeta(),
             'taskPriorityMeta' => Task::priorityMeta(),
         ]);
