@@ -207,7 +207,7 @@
                 <select id="drwr-assigned-to" name="assigned_to" class="field">
                     <option value="">Sin asignar</option>
                     @foreach ($users->groupBy('area') as $area => $areaUsers)
-                        <optgroup label="{{ $area ?: 'Sin área' }}">
+                        <optgroup label="{{ $area ? \App\Support\OperationalLabels::get($area) : 'Sin área' }}">
                             @foreach ($areaUsers as $user)
                                 <option value="{{ $user->id }}" @selected($task->assigned_to == $user->id)>{{ $user->name }}</option>
                             @endforeach

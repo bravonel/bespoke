@@ -18,7 +18,7 @@ return new class extends Migration
             $table->foreignId('owner_id')->nullable()->constrained('users')->nullOnDelete();
             $table->string('name');
             $table->string('code')->unique();
-            $table->string('project_type')->default('campaign');
+            $table->string('project_type')->default('campana');
             $table->string('priority')->default('normal');
             $table->string('status')->default('draft');
             $table->string('current_stage')->default('brief');

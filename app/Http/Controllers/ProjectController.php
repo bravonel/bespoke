@@ -51,6 +51,7 @@ class ProjectController extends Controller
             'statuses' => Project::statusOptions(),
             'priorities' => Project::priorityOptions(),
             'stages' => Project::stageOptions(),
+            'materialTypes' => Project::materialTypeOptions(),
             'deliveryTypes' => Project::deliveryTypeOptions(),
             'workloadRoles' => ProjectWorkload::roleOptions(),
             'filters' => $request->only(['client_id', 'status', 'stage', 'q']),
@@ -66,6 +67,7 @@ class ProjectController extends Controller
             'statuses' => Project::statusOptions(),
             'priorities' => Project::priorityOptions(),
             'stages' => Project::stageOptions(),
+            'materialTypes' => Project::materialTypeOptions(),
             'deliveryTypes' => Project::deliveryTypeOptions(),
             'workloadRoles' => ProjectWorkload::roleOptions(),
         ]);
@@ -224,6 +226,7 @@ class ProjectController extends Controller
             'projectStatuses' => Project::statusOptions(),
             'projectPriorities' => Project::priorityOptions(),
             'projectStages' => Project::stageOptions(),
+            'materialTypes' => Project::materialTypeOptions(),
             'deliveryTypes' => Project::deliveryTypeOptions(),
             'workloadRoles' => ProjectWorkload::roleOptions(),
             'boardSummary' => [

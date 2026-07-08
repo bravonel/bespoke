@@ -46,6 +46,20 @@ class ProfileTest extends TestCase
         $this->assertNull($user->email_verified_at);
     }
 
+    public function test_profile_area_and_role_are_loaded_in_spanish(): void
+    {
+        $user = User::factory()->create([
+            'area' => 'Copy',
+            'puesto' => 'Project Manager',
+        ]);
+
+        $this->actingAs($user);
+
+        Volt::test('profile.update-profile-information-form')
+            ->assertSet('area', 'Redacción')
+            ->assertSet('puesto', 'Gestor de proyectos');
+    }
+
     public function test_email_verification_status_is_unchanged_when_the_email_address_is_unchanged(): void
     {
         $user = User::factory()->create();

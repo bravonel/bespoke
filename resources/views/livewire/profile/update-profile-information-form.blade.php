@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use App\Support\OperationalLabels;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\Rule;
@@ -17,8 +18,8 @@ new class extends Component
     {
         $this->name   = Auth::user()->name;
         $this->email  = Auth::user()->email;
-        $this->area   = Auth::user()->area ?? '';
-        $this->puesto = Auth::user()->puesto ?? '';
+        $this->area   = OperationalLabels::get(Auth::user()->area);
+        $this->puesto = OperationalLabels::get(Auth::user()->puesto);
     }
 
     public function updateProfileInformation(): void

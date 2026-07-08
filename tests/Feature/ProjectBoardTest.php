@@ -29,7 +29,7 @@ class ProjectBoardTest extends TestCase
             'planned_for' => '2026-07-02',
             'estimated_hours' => '2.5',
             'due_at' => '2026-07-05',
-            'subtasks' => "Validar brief\nArmar layout\nMandar a medico",
+            'subtasks' => "Validar brief\nArmar layout\nMandar a médico",
         ]);
 
         $response->assertRedirect(route('projects.show', $project));
@@ -115,9 +115,9 @@ class ProjectBoardTest extends TestCase
 
         $response = $this->actingAs($user)->post(route('projects.store'), [
             'client_id' => $client->id,
-            'name' => 'Flyer Evrysdi',
+            'name' => 'Volante Evrysdi',
             'odt_code' => 'ODT-14001',
-            'project_type' => 'flyer',
+            'project_type' => 'volante',
             'delivery_type' => 'digital',
             'target_audience' => 'Médicos especialistas',
             'material_size' => '1080x1080',
@@ -168,7 +168,7 @@ class ProjectBoardTest extends TestCase
             'role' => 'design',
             'work_date' => today(),
             'estimated_minutes' => 240,
-            'notes' => 'Diseño de flyer',
+            'notes' => 'Diseño de volante',
         ]);
 
         $response = $this->actingAs($user)->get(route('dashboard', [
@@ -179,7 +179,7 @@ class ProjectBoardTest extends TestCase
             ->assertOk()
             ->assertSee('Carga diaria')
             ->assertSee('Luis Cervantes')
-            ->assertSee('Diseño de flyer')
+            ->assertSee('Diseño de volante')
             ->assertSee('Diseño')
             ->assertSee('4 h / 8 h');
     }
@@ -295,7 +295,7 @@ class ProjectBoardTest extends TestCase
             'owner_id' => $owner->id,
             'name' => 'REBAGIT Diptico',
             'code' => 'BSP-BOARD',
-            'project_type' => 'material',
+            'project_type' => 'folleto',
             'priority' => 'normal',
             'status' => 'active',
             'current_stage' => 'design',

@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Project;
+use App\Models\ProjectWorkload;
 use App\Support\OperationalLabels;
 use Illuminate\Support\Facades\Validator;
 use Tests\TestCase;
@@ -42,5 +44,10 @@ class LocalizationTest extends TestCase
         $this->assertSame('En revisión', OperationalLabels::get('in_review'));
         $this->assertSame('Resumen inicial', OperationalLabels::get('brief'));
         $this->assertSame('Listo para enviar', OperationalLabels::get('ready_to_submit'));
+        $this->assertSame('Redacción', OperationalLabels::get('Copy'));
+        $this->assertSame('Médico', OperationalLabels::get('Medical'));
+        $this->assertSame('Redes sociales', OperationalLabels::get('Social Media'));
+        $this->assertSame('Campaña', Project::materialTypeLabel('campaign'));
+        $this->assertSame('Redacción', ProjectWorkload::roleOptions()['copy']);
     }
 }

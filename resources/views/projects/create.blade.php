@@ -31,7 +31,11 @@
 
                     <div>
                         <label class="field-label" for="project-type">Tipo de material</label>
-                        <input id="project-type" name="project_type" class="field" value="{{ old('project_type', 'campaña') }}" required>
+                        <select id="project-type" name="project_type" class="field" required>
+                            @foreach ($materialTypes as $value => $label)
+                                <option value="{{ $value }}" @selected(old('project_type', 'campana') === $value)>{{ $label }}</option>
+                            @endforeach
+                        </select>
                     </div>
 
                     @include('projects._context-fields', [

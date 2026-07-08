@@ -154,7 +154,11 @@
 
                     <div>
                         <label class="field-label" for="project-type">Tipo de material</label>
-                        <input id="project-type" name="project_type" class="field" value="{{ old('project_type', 'campaña') }}" required>
+                        <select id="project-type" name="project_type" class="field" required>
+                            @foreach ($materialTypes as $value => $label)
+                                <option value="{{ $value }}" @selected(old('project_type', 'campana') === $value)>{{ $label }}</option>
+                            @endforeach
+                        </select>
                     </div>
 
                     @include('projects._context-fields', [
@@ -188,7 +192,7 @@
                         <select id="project-owner" name="owner_id" class="field">
                             <option value="">Asignarme a mí</option>
                             @foreach ($owners->groupBy('area') as $area => $areaOwners)
-                                <optgroup label="{{ $area ?: 'Sin área' }}">
+                                <optgroup label="{{ $area ? \App\Support\OperationalLabels::get($area) : 'Sin área' }}">
                                     @foreach ($areaOwners as $owner)
                                         <option value="{{ $owner->id }}" @selected(old('owner_id') == $owner->id)>{{ $owner->name }}</option>
                                     @endforeach

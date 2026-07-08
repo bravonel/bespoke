@@ -11,7 +11,7 @@
             href="{{ route('login') }}"
             class="button-secondary"
         >
-            Iniciar sesion
+            Iniciar sesión
         </a>
 
         @if (Route::has('register'))

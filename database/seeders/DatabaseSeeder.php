@@ -14,11 +14,11 @@ class DatabaseSeeder extends Seeder
 
         $colaboradores = [
             // Cuentas
-            ['name' => 'Carmen Bravo Tapia',    'email' => 'carmen@bespokeadvertising.com.mx',              'area' => 'Cuentas',          'puesto' => 'Project Manager'],
-            ['name' => 'Roberto Moreno',         'email' => 'roberto_moreno@bespokeadvertising.com.mx',      'area' => 'Cuentas',          'puesto' => 'Project Manager'],
-            ['name' => 'Michelle Olvera',        'email' => 'michelle@bespokeadvertising.com.mx',            'area' => 'Cuentas',          'puesto' => 'Project Manager'],
-            ['name' => 'Zaira Quezada',          'email' => 'zaira@bespokeadvertising.com.mx',               'area' => 'Cuentas',          'puesto' => 'Project Manager'],
-            ['name' => 'Fernanda Luján',         'email' => 'mafer@bespokeadvertising.com.mx',               'area' => 'Cuentas',          'puesto' => 'Project Manager'],
+            ['name' => 'Carmen Bravo Tapia',    'email' => 'carmen@bespokeadvertising.com.mx',              'area' => 'Cuentas',          'puesto' => 'Gestor de proyectos'],
+            ['name' => 'Roberto Moreno',         'email' => 'roberto_moreno@bespokeadvertising.com.mx',      'area' => 'Cuentas',          'puesto' => 'Gestor de proyectos'],
+            ['name' => 'Michelle Olvera',        'email' => 'michelle@bespokeadvertising.com.mx',            'area' => 'Cuentas',          'puesto' => 'Gestor de proyectos'],
+            ['name' => 'Zaira Quezada',          'email' => 'zaira@bespokeadvertising.com.mx',               'area' => 'Cuentas',          'puesto' => 'Gestor de proyectos'],
+            ['name' => 'Fernanda Luján',         'email' => 'mafer@bespokeadvertising.com.mx',               'area' => 'Cuentas',          'puesto' => 'Gestor de proyectos'],
             // Diseño
             ['name' => 'Luis Cervantes',         'email' => 'luis@bespokeadvertising.com.mx',                'area' => 'Diseño',           'puesto' => 'Director de Arte'],
             ['name' => 'Itzel Salome',           'email' => 'itzel@bespokeadvertising.com.mx',               'area' => 'Diseño',           'puesto' => 'Diseñador Sr.'],
@@ -29,21 +29,21 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Rafael Camarillo',       'email' => 'rafael@bespokeadvertising.com.mx',              'area' => 'Diseño',           'puesto' => 'Diseñador Web'],
             ['name' => 'Carlos Ramírez',         'email' => 'carlos@bespokeadvertising.com.mx',              'area' => 'Diseño',           'puesto' => 'Diseñador Jr.'],
             ['name' => 'Victor Hugo López',      'email' => 'victor_hugo@bespokeadvertising.com.mx',         'area' => 'Diseño',           'puesto' => 'Diseñador Jr.'],
-            // Medical
-            ['name' => 'Alejandro Lira',         'email' => 'alejandrolira@bespokeadvertising.com.mx',       'area' => 'Medical',          'puesto' => 'Medical Writer'],
-            ['name' => 'Alejandro Lujambio',     'email' => 'alejandro_lujambio@bespokeadvertising.com.mx', 'area' => 'Medical',          'puesto' => 'Medical Writer'],
-            ['name' => 'Andrea Cervantes',       'email' => 'andrea@bespokeadvertising.com.mx',              'area' => 'Medical',          'puesto' => 'Medical Writer'],
-            ['name' => 'Daniela Cruz',           'email' => 'daniela@bespokeadvertising.com.mx',             'area' => 'Medical',          'puesto' => 'Medical Writer'],
-            // Copy
-            ['name' => 'Arturo López',           'email' => 'arturodiaz@bespokeadvertising.com.mx',          'area' => 'Copy',             'puesto' => 'Copy / Proofreader'],
-            // Social Media
-            ['name' => 'Eduardo Gutiérrez',      'email' => 'eduardo@bespokeadvertising.com.mx',             'area' => 'Social Media',     'puesto' => 'Social Media Manager'],
-            ['name' => 'Daniela Vélez',          'email' => 'danielavelez@bespokeadvertising.com.mx',        'area' => 'Social Media',     'puesto' => 'Community Manager'],
-            ['name' => 'Monserrat Barragán',     'email' => 'Monserrath@bespokeadvertising.com.mx',          'area' => 'Social Media',     'puesto' => 'Community Manager'],
+            // Médico
+            ['name' => 'Alejandro Lira',         'email' => 'alejandrolira@bespokeadvertising.com.mx',       'area' => 'Médico',           'puesto' => 'Redactor médico'],
+            ['name' => 'Alejandro Lujambio',     'email' => 'alejandro_lujambio@bespokeadvertising.com.mx', 'area' => 'Médico',           'puesto' => 'Redactor médico'],
+            ['name' => 'Andrea Cervantes',       'email' => 'andrea@bespokeadvertising.com.mx',              'area' => 'Médico',           'puesto' => 'Redactor médico'],
+            ['name' => 'Daniela Cruz',           'email' => 'daniela@bespokeadvertising.com.mx',             'area' => 'Médico',           'puesto' => 'Redactor médico'],
+            // Redacción
+            ['name' => 'Arturo López',           'email' => 'arturodiaz@bespokeadvertising.com.mx',          'area' => 'Redacción',        'puesto' => 'Redacción / Corrección'],
+            // Redes sociales
+            ['name' => 'Eduardo Gutiérrez',      'email' => 'eduardo@bespokeadvertising.com.mx',             'area' => 'Redes sociales',   'puesto' => 'Responsable de redes sociales'],
+            ['name' => 'Daniela Vélez',          'email' => 'danielavelez@bespokeadvertising.com.mx',        'area' => 'Redes sociales',   'puesto' => 'Gestor de comunidad'],
+            ['name' => 'Monserrat Barragán',     'email' => 'Monserrath@bespokeadvertising.com.mx',          'area' => 'Redes sociales',   'puesto' => 'Gestor de comunidad'],
             // Digital
-            ['name' => 'Marco Torres',           'email' => 'marco@bespokeadvertising.com.mx',               'area' => 'Digital',          'puesto' => 'Innovation Manager'],
+            ['name' => 'Marco Torres',           'email' => 'marco@bespokeadvertising.com.mx',               'area' => 'Digital',          'puesto' => 'Gerente de innovación'],
             // Dirección General
-            ['name' => 'Sonia Luján',            'email' => 'sony@bespokeadvertising.com.mx',                'area' => 'Dirección General', 'puesto' => 'CEO'],
+            ['name' => 'Sonia Luján',            'email' => 'sony@bespokeadvertising.com.mx',                'area' => 'Dirección General', 'puesto' => 'Dirección general'],
         ];
 
         foreach ($colaboradores as $data) {

@@ -115,7 +115,7 @@
                         </div>
                         <div class="flex items-center gap-2">
                             <dt class="text-slate-500">Tipo de material</dt>
-                            <dd class="font-medium text-slate-900">{{ str($project->project_type)->title() }}</dd>
+                            <dd class="font-medium text-slate-900">{{ \App\Models\Project::materialTypeLabel($project->project_type) }}</dd>
                         </div>
                         <div class="flex items-center gap-2">
                             <dt class="text-slate-500">Entrega</dt>
@@ -216,7 +216,7 @@
                     >
                         <option value="">Todos los responsables</option>
                         @foreach ($users->groupBy('area') as $area => $areaUsers)
-                            <optgroup label="{{ $area ?: 'Sin área' }}">
+                            <optgroup label="{{ $area ? \App\Support\OperationalLabels::get($area) : 'Sin área' }}">
                                 @foreach ($areaUsers as $user)
                                     <option value="{{ $user->name }}">{{ $user->name }}</option>
                                 @endforeach
@@ -397,7 +397,14 @@
 
                     <div>
                         <label class="field-label" for="ep-type">Tipo de material</label>
-                        <input id="ep-type" name="project_type" class="field" value="{{ $project->project_type }}" required>
+                        <select id="ep-type" name="project_type" class="field" required>
+                            @if ($project->project_type && ! array_key_exists($project->project_type, $materialTypes))
+                                <option value="{{ $project->project_type }}" selected>{{ \App\Models\Project::materialTypeLabel($project->project_type) }}</option>
+                            @endif
+                            @foreach ($materialTypes as $value => $label)
+                                <option value="{{ $value }}" @selected(old('project_type', $project->project_type) === $value)>{{ $label }}</option>
+                            @endforeach
+                        </select>
                     </div>
 
                     @include('projects._context-fields', [
@@ -410,7 +417,7 @@
                         <select id="ep-owner" name="owner_id" class="field">
                             <option value="">Sin asignar</option>
                             @foreach ($users->groupBy('area') as $area => $areaUsers)
-                                <optgroup label="{{ $area ?: 'Sin área' }}">
+                                <optgroup label="{{ $area ? \App\Support\OperationalLabels::get($area) : 'Sin área' }}">
                                     @foreach ($areaUsers as $user)
                                         <option value="{{ $user->id }}" @selected($project->owner_id == $user->id)>{{ $user->name }}</option>
                                     @endforeach
@@ -550,9 +557,9 @@
                             <select id="task-assigned-to" name="assigned_to" class="field">
                                 <option value="">Sin asignar</option>
                                 @foreach ($users->groupBy('area') as $area => $areaUsers)
-                                    <optgroup label="{{ $area ?: 'Sin área' }}">
+                                    <optgroup label="{{ $area ? \App\Support\OperationalLabels::get($area) : 'Sin área' }}">
                                         @foreach ($areaUsers as $user)
-                                            <option value="{{ $user->id }}" @selected(old('assigned_to') == $user->id)>{{ $user->name }}{{ $user->puesto ? ' · ' . $user->puesto : '' }}</option>
+                                            <option value="{{ $user->id }}" @selected(old('assigned_to') == $user->id)>{{ $user->name }}{{ $user->puesto ? ' · ' . \App\Support\OperationalLabels::get($user->puesto) : '' }}</option>
                                         @endforeach
                                     </optgroup>
                                 @endforeach

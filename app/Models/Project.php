@@ -87,6 +87,30 @@ class Project extends Model
         return ['low', 'normal', 'high', 'critical'];
     }
 
+    public static function materialTypeOptions(): array
+    {
+        return [
+            'campana' => 'Campaña',
+            'volante' => 'Volante',
+            'ayuda_visual' => 'Ayuda visual',
+            'folleto' => 'Folleto',
+            'monografia' => 'Monografía',
+            'video' => 'Video',
+            'presentacion' => 'Presentación',
+            'otro' => 'Otro',
+        ];
+    }
+
+    public static function materialTypeLabel(?string $value): string
+    {
+        if (! $value) {
+            return 'Por definir';
+        }
+
+        return static::materialTypeOptions()[$value]
+            ?? \App\Support\OperationalLabels::get($value);
+    }
+
     public static function deliveryTypeOptions(): array
     {
         return [

@@ -60,7 +60,7 @@
                         <select id="daily-area" name="area" class="field mt-1.5 py-2.5">
                             <option value="">Todas</option>
                             @foreach ($areas as $area)
-                                <option value="{{ $area }}" @selected($dailyFilters['area'] === $area)>{{ $area }}</option>
+                                <option value="{{ $area }}" @selected($dailyFilters['area'] === $area)>{{ \App\Support\OperationalLabels::get($area) }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -70,7 +70,7 @@
                         <select id="daily-user" name="user_id" class="field mt-1.5 py-2.5">
                             <option value="">Todos</option>
                             @foreach ($users->groupBy('area') as $area => $areaUsers)
-                                <optgroup label="{{ $area ?: 'Sin área' }}">
+                                <optgroup label="{{ $area ? \App\Support\OperationalLabels::get($area) : 'Sin área' }}">
                                     @foreach ($areaUsers as $user)
                                         <option value="{{ $user->id }}" @selected($dailyFilters['user_id'] === $user->id)>{{ $user->name }}</option>
                                     @endforeach
@@ -118,9 +118,9 @@
                             <div class="min-w-0">
                                 <div class="font-semibold text-slate-950">{{ $assignee?->name ?: 'Sin asignar' }}</div>
                                 <div class="mt-1 text-sm text-slate-500">
-                                    {{ $assignee?->area ?: 'Sin área' }}
+                                    {{ $assignee?->area ? \App\Support\OperationalLabels::get($assignee->area) : 'Sin área' }}
                                     @if ($assignee?->puesto)
-                                        · {{ $assignee->puesto }}
+                                        · {{ \App\Support\OperationalLabels::get($assignee->puesto) }}
                                     @endif
                                 </div>
                             </div>

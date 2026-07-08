@@ -41,9 +41,9 @@ class ProjectWorkload extends Model
     {
         return [
             'design' => 'Diseño',
-            'copy' => 'Copy',
-            'social_media' => 'Social media',
-            'medical' => 'Medical',
+            'copy' => 'Redacción',
+            'social_media' => 'Redes sociales',
+            'medical' => 'Médico',
             'accounts' => 'Cuentas',
         ];
     }

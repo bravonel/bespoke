@@ -31,9 +31,9 @@
                     <select id="{{ $fieldPrefix }}workload-{{ $role }}-user" name="workloads[{{ $role }}][user_id]" class="field mt-0">
                         <option value="">Sin asignar</option>
                         @foreach ($people->groupBy('area') as $area => $areaPeople)
-                            <optgroup label="{{ $area ?: 'Sin área' }}">
+                            <optgroup label="{{ $area ? \App\Support\OperationalLabels::get($area) : 'Sin área' }}">
                                 @foreach ($areaPeople as $person)
-                                    <option value="{{ $person->id }}" @selected((string) $selectedUser === (string) $person->id)>{{ $person->name }}{{ $person->puesto ? ' · ' . $person->puesto : '' }}</option>
+                                    <option value="{{ $person->id }}" @selected((string) $selectedUser === (string) $person->id)>{{ $person->name }}{{ $person->puesto ? ' · ' . \App\Support\OperationalLabels::get($person->puesto) : '' }}</option>
                                 @endforeach
                             </optgroup>
                         @endforeach
