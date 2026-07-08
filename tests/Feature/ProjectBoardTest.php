@@ -174,6 +174,20 @@ class ProjectBoardTest extends TestCase
             ->assertSee('target="_blank"', false);
     }
 
+    public function test_project_edit_button_has_modal_fallback_hook(): void
+    {
+        $user = User::factory()->create();
+        $project = $this->makeProject($user);
+
+        $response = $this->actingAs($user)->get(route('projects.show', $project));
+
+        $response
+            ->assertOk()
+            ->assertSee('data-open-modal="edit-project"', false)
+            ->assertSee('Editar proyecto')
+            ->assertSee('data-close-modal="edit-project"', false);
+    }
+
     public function test_daily_load_includes_project_workloads(): void
     {
         $user = User::factory()->create([

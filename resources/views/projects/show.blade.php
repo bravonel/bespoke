@@ -18,7 +18,7 @@
             <div class="flex flex-wrap gap-2">
                 <x-status-badge :value="$project->status" />
                 <x-status-badge :value="$project->current_stage" />
-                <button type="button" @click="$dispatch('open-modal', 'edit-project')" class="button-secondary">Editar proyecto</button>
+                <button type="button" @click="$dispatch('open-modal', 'edit-project')" data-open-modal="edit-project" class="button-secondary">Editar proyecto</button>
                 <a href="{{ route('projects.index') }}" class="button-secondary">Volver</a>
             </div>
         </div>
@@ -344,7 +344,7 @@
                     <h2 class="text-lg font-semibold text-slate-950">Editar proyecto</h2>
                     <p class="mt-1 text-sm text-slate-500">Actualiza los datos del proyecto.</p>
                 </div>
-                <button type="button" x-on:click="$dispatch('close')" class="mt-0.5 shrink-0 text-slate-400 hover:text-slate-700">
+                <button type="button" x-on:click="$dispatch('close')" data-close-modal="edit-project" class="mt-0.5 shrink-0 text-slate-400 hover:text-slate-700">
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
             </div>
@@ -477,7 +477,7 @@
                         </form>
 
                         <div class="flex gap-3">
-                            <button type="button" x-on:click="$dispatch('close')" class="button-secondary">Cancelar</button>
+                            <button type="button" x-on:click="$dispatch('close')" data-close-modal="edit-project" class="button-secondary">Cancelar</button>
                             <button class="button-primary">Guardar cambios</button>
                         </div>
                     </div>

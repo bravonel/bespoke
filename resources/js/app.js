@@ -1,5 +1,19 @@
 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
 
+document.addEventListener('click', (event) => {
+    const openTrigger = event.target.closest('[data-open-modal]');
+
+    if (openTrigger) {
+        window.dispatchEvent(new CustomEvent('open-modal', { detail: openTrigger.dataset.openModal }));
+    }
+
+    const closeTrigger = event.target.closest('[data-close-modal]');
+
+    if (closeTrigger) {
+        window.dispatchEvent(new CustomEvent('close-modal', { detail: closeTrigger.dataset.closeModal }));
+    }
+});
+
 document.addEventListener('alpine:init', () => {
     Alpine.data('taskDrawer', () => ({
         isOpen: false,
