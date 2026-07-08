@@ -153,6 +153,27 @@ class ProjectBoardTest extends TestCase
         ]);
     }
 
+    public function test_project_summary_formats_links_in_context_fields(): void
+    {
+        $user = User::factory()->create();
+        $project = $this->makeProject($user);
+
+        $project->update([
+            'description' => 'Consulta la carpeta https://contoso.sharepoint.com/proyecto para descargar archivos.',
+            'legal_requirements' => 'Validar en www.contoso.com/legal.',
+            'reference_links' => 'https://contoso.sharepoint.com/referencias',
+        ]);
+
+        $response = $this->actingAs($user)->get(route('projects.show', $project));
+
+        $response
+            ->assertOk()
+            ->assertSee('href="https://contoso.sharepoint.com/proyecto"', false)
+            ->assertSee('href="https://www.contoso.com/legal"', false)
+            ->assertSee('href="https://contoso.sharepoint.com/referencias"', false)
+            ->assertSee('target="_blank"', false);
+    }
+
     public function test_daily_load_includes_project_workloads(): void
     {
         $user = User::factory()->create([

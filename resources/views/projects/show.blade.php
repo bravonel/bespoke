@@ -132,7 +132,7 @@
                     </dl>
 
                     @if ($project->description)
-                        <p class="mt-4 max-w-3xl text-sm text-slate-600">{{ $project->description }}</p>
+                        <p class="mt-4 whitespace-pre-line break-words text-sm leading-6 text-slate-600">{!! \App\Support\LinkedText::render($project->description) !!}</p>
                     @endif
 
                     @if ($project->legal_requirements || $project->reference_links)
@@ -140,25 +140,14 @@
                             @if ($project->legal_requirements)
                                 <div>
                                     <h3 class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Legales</h3>
-                                    <p class="mt-2 whitespace-pre-line text-sm leading-6 text-slate-600">{{ $project->legal_requirements }}</p>
+                                    <p class="mt-2 whitespace-pre-line break-words text-sm leading-6 text-slate-600">{!! \App\Support\LinkedText::render($project->legal_requirements) !!}</p>
                                 </div>
                             @endif
 
                             @if ($project->reference_links)
                                 <div>
                                     <h3 class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Referencias</h3>
-                                    <div class="mt-2 space-y-1 text-sm">
-                                        @foreach (preg_split('/\r\n|\r|\n/', $project->reference_links) as $referenceLink)
-                                            @php $referenceLink = trim($referenceLink); @endphp
-                                            @if ($referenceLink !== '')
-                                                @if (filter_var($referenceLink, FILTER_VALIDATE_URL))
-                                                    <a href="{{ $referenceLink }}" target="_blank" rel="noreferrer" class="block break-all font-medium hover:underline" style="color:var(--brand-amber)">{{ $referenceLink }}</a>
-                                                @else
-                                                    <div class="break-all text-slate-600">{{ $referenceLink }}</div>
-                                                @endif
-                                            @endif
-                                        @endforeach
-                                    </div>
+                                    <div class="mt-2 whitespace-pre-line break-words text-sm leading-6 text-slate-600">{!! \App\Support\LinkedText::render($project->reference_links) !!}</div>
                                 </div>
                             @endif
                         </div>
