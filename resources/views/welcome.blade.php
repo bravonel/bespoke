@@ -65,7 +65,7 @@
                             <h2 class="text-lg font-semibold text-slate-950">Lo que ya quedo prendido</h2>
                             <ul class="mt-4 space-y-3 text-sm text-slate-600">
                                 <li>Auth con Laravel Breeze y Livewire</li>
-                                <li>Dashboard base de operacion</li>
+                                <li>Tablero base de operación</li>
                                 <li>Catalogos iniciales de clientes y marcas</li>
                                 <li>Proyectos con tareas simples</li>
                             </ul>

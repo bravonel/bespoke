@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Brand;
 use App\Models\Client;
 use App\Models\Project;
+use App\Models\ProjectWorkload;
 use App\Models\Task;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -60,26 +61,75 @@ class DashboardController extends Controller
         }
 
         $dailyTasks = $dailyTasksQuery->get();
+        $workloadRoles = ProjectWorkload::roleOptions();
 
-        $dailyLoadRows = $dailyTasks
-            ->groupBy(fn (Task $task) => $task->assigned_to ?: 'unassigned')
-            ->map(function ($tasks) {
-                $assignee = $tasks->first()->assignee;
+        $dailyWorkloadsQuery = ProjectWorkload::query()
+            ->with(['user', 'project.client', 'project.brand'])
+            ->whereDate('work_date', $selectedDate->toDateString())
+            ->orderBy('role')
+            ->orderBy('id');
+
+        if ($areaFilter !== '') {
+            $dailyWorkloadsQuery->whereHas('user', fn ($query) => $query->where('area', $areaFilter));
+        }
+
+        if ($userFilter) {
+            $dailyWorkloadsQuery->where('user_id', $userFilter);
+        }
+
+        $dailyWorkloads = $dailyWorkloadsQuery->get();
+
+        $dailyActivities = $dailyTasks
+            ->map(fn (Task $task) => [
+                'type' => 'task',
+                'label' => 'Tarea',
+                'title' => $task->title,
+                'project' => $task->project,
+                'assignee' => $task->assignee,
+                'user_id' => $task->assigned_to,
+                'role' => null,
+                'status' => $task->status,
+                'estimated_minutes' => $task->estimated_minutes,
+                'due_at' => $task->due_at,
+                'is_blocked' => $task->status === 'blocked',
+                'is_overdue' => $task->status !== 'done' && $task->due_at?->isPast(),
+                'missing_estimate' => $task->estimated_minutes === null,
+                'task' => $task,
+            ])
+            ->concat($dailyWorkloads->map(fn (ProjectWorkload $workload) => [
+                'type' => 'workload',
+                'label' => 'Carga',
+                'title' => $workload->notes ?: ($workloadRoles[$workload->role] ?? 'Carga asignada'),
+                'project' => $workload->project,
+                'assignee' => $workload->user,
+                'user_id' => $workload->user_id,
+                'role' => $workloadRoles[$workload->role] ?? $workload->role,
+                'status' => null,
+                'estimated_minutes' => $workload->estimated_minutes,
+                'due_at' => $workload->project?->due_at,
+                'is_blocked' => false,
+                'is_overdue' => $workload->project?->status !== 'done' && $workload->project?->due_at?->isPast(),
+                'missing_estimate' => $workload->estimated_minutes === null,
+                'workload' => $workload,
+            ]));
+
+        $dailyLoadRows = $dailyActivities
+            ->groupBy(fn (array $activity) => $activity['user_id'] ?: 'unassigned')
+            ->map(function ($activities) {
+                $assignee = $activities->first()['assignee'];
                 $capacity = $assignee?->daily_capacity_minutes ?? 480;
-                $estimated = (int) $tasks->sum(fn (Task $task) => $task->estimated_minutes ?? 0);
+                $estimated = (int) $activities->sum(fn (array $activity) => $activity['estimated_minutes'] ?? 0);
 
                 return [
                     'assignee' => $assignee,
-                    'tasks' => $tasks,
-                    'task_count' => $tasks->count(),
+                    'activities' => $activities,
+                    'task_count' => $activities->count(),
                     'estimated_minutes' => $estimated,
                     'capacity_minutes' => $capacity,
                     'capacity_percent' => $capacity > 0 ? min(160, (int) round(($estimated / $capacity) * 100)) : 0,
-                    'blocked_count' => $tasks->where('status', 'blocked')->count(),
-                    'overdue_count' => $tasks
-                        ->filter(fn (Task $task) => $task->status !== 'done' && $task->due_at?->isPast())
-                        ->count(),
-                    'missing_estimate_count' => $tasks->whereNull('estimated_minutes')->count(),
+                    'blocked_count' => $activities->where('is_blocked', true)->count(),
+                    'overdue_count' => $activities->where('is_overdue', true)->count(),
+                    'missing_estimate_count' => $activities->where('missing_estimate', true)->count(),
                 ];
             })
             ->sortBy([
@@ -90,13 +140,11 @@ class DashboardController extends Controller
             ->values();
 
         $dailySummary = [
-            'tasks' => $dailyTasks->count(),
-            'estimated_minutes' => (int) $dailyTasks->sum(fn (Task $task) => $task->estimated_minutes ?? 0),
-            'blocked' => $dailyTasks->where('status', 'blocked')->count(),
-            'overdue' => $dailyTasks
-                ->filter(fn (Task $task) => $task->status !== 'done' && $task->due_at?->isPast())
-                ->count(),
-            'missing_estimates' => $dailyTasks->whereNull('estimated_minutes')->count(),
+            'tasks' => $dailyActivities->count(),
+            'estimated_minutes' => (int) $dailyActivities->sum(fn (array $activity) => $activity['estimated_minutes'] ?? 0),
+            'blocked' => $dailyActivities->where('is_blocked', true)->count(),
+            'overdue' => $dailyActivities->where('is_overdue', true)->count(),
+            'missing_estimates' => $dailyActivities->where('missing_estimate', true)->count(),
             'over_capacity_users' => $dailyLoadRows
                 ->filter(fn (array $row) => $row['estimated_minutes'] > $row['capacity_minutes'])
                 ->count(),

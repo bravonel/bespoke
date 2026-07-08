@@ -19,10 +19,15 @@ class Project extends Model
         'code',
         'odt_code',
         'project_type',
+        'delivery_type',
+        'target_audience',
+        'material_size',
         'priority',
         'status',
         'current_stage',
         'description',
+        'legal_requirements',
+        'reference_links',
         'starts_at',
         'due_at',
         'completed_at',
@@ -57,6 +62,11 @@ class Project extends Model
         return $this->hasMany(Task::class);
     }
 
+    public function workloads(): HasMany
+    {
+        return $this->hasMany(ProjectWorkload::class);
+    }
+
     public function operationalCode(): string
     {
         return $this->odt_code ?: $this->code;
@@ -75,6 +85,15 @@ class Project extends Model
     public static function priorityOptions(): array
     {
         return ['low', 'normal', 'high', 'critical'];
+    }
+
+    public static function deliveryTypeOptions(): array
+    {
+        return [
+            'digital' => 'Digital',
+            'printed' => 'Impreso',
+            'both' => 'Digital e impreso',
+        ];
     }
 
     public static function stageOptions(): array

@@ -77,11 +77,11 @@
                                                     {{ $isOverdue
                                                         ? 'border-rose-200 bg-rose-50 text-rose-700'
                                                         : 'border-stone-200 bg-stone-50 text-slate-500' }}">
-                                                    Vence {{ $task->due_at?->format('d M Y') ?: 'sin fecha' }}
+                                                    Entrega {{ $task->due_at?->translatedFormat('d M Y') ?: 'sin fecha' }}
                                                 </span>
 
                                                 <span class="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs font-semibold text-slate-500">
-                                                    Plan {{ $task->planned_for?->format('d M Y') ?: 'sin fecha' }}
+                                                    Carga {{ $task->planned_for?->translatedFormat('d M Y') ?: 'sin fecha' }}
                                                 </span>
 
                                                 <span class="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs font-semibold text-slate-500">

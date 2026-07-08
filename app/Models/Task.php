@@ -56,11 +56,11 @@ class Task extends Model
         return [
             'todo' => [
                 'label' => 'Por hacer',
-                'description' => 'Lo que sigue y aun no arranca.',
+                'description' => 'Lo que sigue y aún no arranca.',
             ],
             'in_progress' => [
                 'label' => 'En curso',
-                'description' => 'Lo que hoy esta en manos del equipo.',
+                'description' => 'Lo que hoy está en manos del equipo.',
             ],
             'blocked' => [
                 'label' => 'Bloqueadas',

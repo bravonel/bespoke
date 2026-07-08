@@ -1,0 +1,21 @@
+{
+    "All rights reserved.": "Todos los derechos reservados.",
+    "Hello!": "Hola,",
+    "If you did not create an account, no further action is required.": "Si no creaste una cuenta, no es necesario hacer nada más.",
+    "If you did not request a password reset, no further action is required.": "Si no solicitaste restablecer tu contraseña, no es necesario hacer nada más.",
+    "If you're having trouble clicking the \":actionText\" button, copy and paste the URL below\ninto your web browser:": "Si tienes problemas para hacer clic en el botón \":actionText\", copia y pega la URL de abajo en tu navegador:",
+    "Log Out": "Cerrar sesión",
+    "Mis tareas": "Mis tareas",
+    "Overview": "Resumen",
+    "Please click the button below to verify your email address.": "Haz clic en el botón de abajo para verificar tu correo electrónico.",
+    "Profile": "Perfil",
+    "Regards,": "Saludos,",
+    "Reset Password": "Restablecer contraseña",
+    "Reset your password": "Restablece tu contraseña",
+    "Saved.": "Guardado.",
+    "This password reset link will expire in :count minutes.": "Este enlace para restablecer tu contraseña expirará en :count minutos.",
+    "Verify Email Address": "Verificar correo electrónico",
+    "Verify your email address": "Verifica tu correo electrónico",
+    "Whoops!": "Ups,",
+    "You are receiving this email because we received a password reset request for your account.": "Te escribimos porque recibimos una solicitud para restablecer la contraseña de tu cuenta."
+}

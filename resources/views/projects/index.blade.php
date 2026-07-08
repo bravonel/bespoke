@@ -41,7 +41,7 @@
                 <select id="f-status" name="status" class="field mt-0">
                     <option value="">Todos</option>
                     @foreach ($statuses as $status)
-                        <option value="{{ $status }}" @selected(($filters['status'] ?? '') === $status)>{{ str($status)->replace('_', ' ')->title() }}</option>
+                        <option value="{{ $status }}" @selected(($filters['status'] ?? '') === $status)>{{ \App\Support\OperationalLabels::get($status) }}</option>
                     @endforeach
                 </select>
             </div>
@@ -51,7 +51,7 @@
                 <select id="f-stage" name="stage" class="field mt-0">
                     <option value="">Todas</option>
                     @foreach ($stages as $stage)
-                        <option value="{{ $stage }}" @selected(($filters['stage'] ?? '') === $stage)>{{ str($stage)->replace('_', ' ')->title() }}</option>
+                        <option value="{{ $stage }}" @selected(($filters['stage'] ?? '') === $stage)>{{ \App\Support\OperationalLabels::get($stage) }}</option>
                     @endforeach
                 </select>
             </div>
@@ -75,7 +75,7 @@
                         <th>Estatus</th>
                         <th>Prioridad</th>
                         <th>Responsable</th>
-                        <th>Vence</th>
+                        <th>Entrega</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -94,11 +94,11 @@
                                 <div>{{ $project->client->name }}</div>
                                 <div class="text-xs text-slate-500">{{ $project->brand?->name ?: 'Sin marca' }}</div>
                             </td>
-                            <td>{{ str($project->current_stage)->replace('_', ' ')->title() }}</td>
+                            <td>{{ \App\Support\OperationalLabels::get($project->current_stage) }}</td>
                             <td><x-status-badge :value="$project->status" /></td>
-                            <td>{{ str($project->priority)->title() }}</td>
+                            <td>{{ \App\Support\OperationalLabels::get($project->priority) }}</td>
                             <td>{{ $project->owner?->name ?: 'Sin asignar' }}</td>
-                            <td>{{ $project->due_at?->format('d M Y') ?: 'Sin fecha' }}</td>
+                            <td>{{ $project->due_at?->translatedFormat('d M Y') ?: 'Sin fecha' }}</td>
                             <td>
                                 <a href="{{ route('projects.show', $project) }}" class="button-secondary">Ver detalle</a>
                             </td>
@@ -124,7 +124,7 @@
         <div class="modal-header flex items-start justify-between gap-4">
             <div>
                 <h2 class="text-lg font-semibold text-slate-950">Nuevo proyecto</h2>
-                <p class="mt-1 text-sm text-slate-500">Conecta un cliente, define el responsable y pon una fecha compromiso para que el equipo arranque con orden.</p>
+                <p class="mt-1 text-sm text-slate-500">Conecta un cliente, define responsables y pon una fecha de entrega para que el equipo arranque con orden.</p>
             </div>
             <button type="button" x-on:click="show = false" class="mt-0.5 shrink-0 text-slate-400 hover:text-slate-700">
                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -153,9 +153,14 @@
                     </div>
 
                     <div>
-                        <label class="field-label" for="project-type">Tipo</label>
+                        <label class="field-label" for="project-type">Tipo de material</label>
                         <input id="project-type" name="project_type" class="field" value="{{ old('project_type', 'campaña') }}" required>
                     </div>
+
+                    @include('projects._context-fields', [
+                        'project' => null,
+                        'fieldPrefix' => 'project-',
+                    ])
 
                     <div>
                         <label class="field-label" for="project-client">Cliente</label>
@@ -196,7 +201,7 @@
                         <label class="field-label" for="project-priority">Prioridad</label>
                         <select id="project-priority" name="priority" class="field">
                             @foreach ($priorities as $priority)
-                                <option value="{{ $priority }}" @selected(old('priority', 'normal') === $priority)>{{ str($priority)->title() }}</option>
+                                <option value="{{ $priority }}" @selected(old('priority', 'normal') === $priority)>{{ \App\Support\OperationalLabels::get($priority) }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -205,7 +210,7 @@
                         <label class="field-label" for="project-status">Estatus</label>
                         <select id="project-status" name="status" class="field">
                             @foreach ($statuses as $status)
-                                <option value="{{ $status }}" @selected(old('status', 'draft') === $status)>{{ str($status)->replace('_', ' ')->title() }}</option>
+                                <option value="{{ $status }}" @selected(old('status', 'draft') === $status)>{{ \App\Support\OperationalLabels::get($status) }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -214,18 +219,18 @@
                         <label class="field-label" for="project-stage">Etapa</label>
                         <select id="project-stage" name="current_stage" class="field">
                             @foreach ($stages as $stage)
-                                <option value="{{ $stage }}" @selected(old('current_stage', 'brief') === $stage)>{{ str($stage)->replace('_', ' ')->title() }}</option>
+                                <option value="{{ $stage }}" @selected(old('current_stage', 'brief') === $stage)>{{ \App\Support\OperationalLabels::get($stage) }}</option>
                             @endforeach
                         </select>
                     </div>
 
                     <div>
-                        <label class="field-label" for="project-starts-at">Inicio</label>
+                        <label class="field-label" for="project-starts-at">Fecha de inicio</label>
                         <input id="project-starts-at" type="date" name="starts_at" class="field" value="{{ old('starts_at') }}">
                     </div>
 
                     <div>
-                        <label class="field-label" for="project-due-at">Fecha compromiso</label>
+                        <label class="field-label" for="project-due-at">Fecha de entrega</label>
                         <input id="project-due-at" type="date" name="due_at" class="field" value="{{ old('due_at') }}">
                     </div>
 
@@ -233,6 +238,12 @@
                         <label class="field-label" for="project-description">Descripción</label>
                         <textarea id="project-description" name="description" rows="3" class="field">{{ old('description') }}</textarea>
                     </div>
+
+                    @include('projects._workload-fields', [
+                        'project' => null,
+                        'people' => $owners,
+                        'fieldPrefix' => 'project-',
+                    ])
 
                     <div class="lg:col-span-2 flex justify-end gap-3">
                         <button type="button" x-on:click="show = false" class="button-secondary">Cancelar</button>

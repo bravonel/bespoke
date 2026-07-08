@@ -102,7 +102,7 @@
                         <label class="field-label" for="ec-status-{{ $client->id }}">Estatus</label>
                         <select id="ec-status-{{ $client->id }}" name="status" class="field">
                             @foreach ($statuses as $status)
-                                <option value="{{ $status }}" @selected($client->status === $status)>{{ str($status)->replace('_', ' ')->title() }}</option>
+                                <option value="{{ $status }}" @selected($client->status === $status)>{{ \App\Support\OperationalLabels::get($status) }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -162,7 +162,7 @@
                     <label class="field-label" for="client-status">Estatus</label>
                     <select id="client-status" name="status" class="field">
                         @foreach ($statuses as $status)
-                            <option value="{{ $status }}" @selected(old('status', 'active') === $status)>{{ str($status)->replace('_', ' ')->title() }}</option>
+                            <option value="{{ $status }}" @selected(old('status', 'active') === $status)>{{ \App\Support\OperationalLabels::get($status) }}</option>
                         @endforeach
                     </select>
                 </div>

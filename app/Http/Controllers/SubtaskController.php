@@ -34,6 +34,6 @@ class SubtaskController extends Controller
             'completed_at' => $validated['is_done'] ? now() : null,
         ]);
 
-        return to_route('projects.show', $subtask->task->project)->with('status', 'Checklist actualizado.');
+        return to_route('projects.show', $subtask->task->project)->with('status', 'Lista actualizada.');
     }
 }

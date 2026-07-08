@@ -42,7 +42,7 @@
 
     {{-- VIEW mode --}}
     <div data-view>
-        {{-- Status + Meta --}}
+        {{-- Estatus y datos --}}
         <div class="mb-6 flex flex-wrap items-center gap-3">
             <form method="POST" action="{{ route('tasks.update-status', $task) }}" class="flex items-center gap-2">
                 @csrf
@@ -63,12 +63,12 @@
 
             @if ($task->due_at)
                 <span class="rounded-full border px-3 py-1 text-xs font-semibold {{ $isOverdue ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-stone-200 bg-stone-50 text-slate-600' }}">
-                    Vence {{ $task->due_at->format('d M Y') }}
+                    Entrega {{ $task->due_at->translatedFormat('d M Y') }}
                 </span>
             @endif
 
             <span class="rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-semibold text-slate-600">
-                Plan {{ $task->planned_for?->format('d M Y') ?: 'sin fecha' }}
+                Carga {{ $task->planned_for?->translatedFormat('d M Y') ?: 'sin fecha' }}
             </span>
 
             <span class="rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-semibold text-slate-600">
@@ -99,10 +99,10 @@
             </p>
         </div>
 
-        {{-- Checklist --}}
+        {{-- Lista --}}
         <div class="mb-8">
             <div class="mb-3 flex items-center justify-between">
-                <h3 class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Checklist</h3>
+                <h3 class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Lista</h3>
                 <span class="text-sm font-semibold text-slate-700">
                     {{ $task->completed_subtasks_count }}/{{ $task->subtasks_count }}
                 </span>
@@ -185,14 +185,14 @@
                 </div>
 
                 <div>
-                    <label class="field-label" for="drwr-due-at">Fecha compromiso</label>
+                    <label class="field-label" for="drwr-due-at">Fecha de entrega</label>
                     <input id="drwr-due-at" type="date" name="due_at" class="field" value="{{ $task->due_at?->format('Y-m-d') }}">
                 </div>
             </div>
 
             <div class="grid gap-4 sm:grid-cols-2">
                 <div>
-                    <label class="field-label" for="drwr-planned-for">Fecha de trabajo</label>
+                    <label class="field-label" for="drwr-planned-for">Día de carga</label>
                     <input id="drwr-planned-for" type="date" name="planned_for" class="field" value="{{ $task->planned_for?->format('Y-m-d') }}">
                 </div>
 

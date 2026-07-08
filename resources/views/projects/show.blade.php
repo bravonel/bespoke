@@ -79,7 +79,7 @@
                 <div class="metric-value">{{ $boardSummary['unassigned_tasks'] }}</div>
             </div>
             <div class="metric-card">
-                <div class="metric-label">Horas plan</div>
+                <div class="metric-label">Horas tareas</div>
                 <div class="metric-value">{{ \App\Models\Task::formatEstimatedMinutes($boardSummary['planned_minutes']) }}</div>
                 @if ($boardSummary['missing_estimates'] > 0)
                     <div class="text-xs font-semibold text-amber-700">{{ $boardSummary['missing_estimates'] }} sin horas</div>
@@ -103,35 +103,110 @@
                         </div>
                         <div class="flex items-center gap-2">
                             <dt class="text-slate-500">Prioridad</dt>
-                            <dd class="font-medium text-slate-900">{{ str($project->priority)->title() }}</dd>
+                            <dd class="font-medium text-slate-900">{{ \App\Support\OperationalLabels::get($project->priority) }}</dd>
                         </div>
                         <div class="flex items-center gap-2">
-                            <dt class="text-slate-500">Inicio</dt>
-                            <dd class="font-medium text-slate-900">{{ $project->starts_at?->format('d M Y') ?: 'Sin fecha' }}</dd>
+                            <dt class="text-slate-500">Fecha de inicio</dt>
+                            <dd class="font-medium text-slate-900">{{ $project->starts_at?->translatedFormat('d M Y') ?: 'Sin fecha' }}</dd>
                         </div>
                         <div class="flex items-center gap-2">
-                            <dt class="text-slate-500">Fecha compromiso</dt>
-                            <dd class="font-medium text-slate-900">{{ $project->due_at?->format('d M Y') ?: 'Sin fecha' }}</dd>
+                            <dt class="text-slate-500">Fecha de entrega</dt>
+                            <dd class="font-medium text-slate-900">{{ $project->due_at?->translatedFormat('d M Y') ?: 'Sin fecha' }}</dd>
                         </div>
                         <div class="flex items-center gap-2">
-                            <dt class="text-slate-500">Tipo</dt>
+                            <dt class="text-slate-500">Tipo de material</dt>
                             <dd class="font-medium text-slate-900">{{ str($project->project_type)->title() }}</dd>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <dt class="text-slate-500">Entrega</dt>
+                            <dd class="font-medium text-slate-900">{{ $deliveryTypes[$project->delivery_type] ?? 'Por definir' }}</dd>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <dt class="text-slate-500">Público</dt>
+                            <dd class="font-medium text-slate-900">{{ $project->target_audience ?: 'Por definir' }}</dd>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <dt class="text-slate-500">Medida</dt>
+                            <dd class="font-medium text-slate-900">{{ $project->material_size ?: 'Por definir' }}</dd>
                         </div>
                     </dl>
 
                     @if ($project->description)
                         <p class="mt-4 max-w-3xl text-sm text-slate-600">{{ $project->description }}</p>
                     @endif
+
+                    @if ($project->legal_requirements || $project->reference_links)
+                        <div class="mt-5 grid gap-4 lg:grid-cols-2">
+                            @if ($project->legal_requirements)
+                                <div>
+                                    <h3 class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Legales</h3>
+                                    <p class="mt-2 whitespace-pre-line text-sm leading-6 text-slate-600">{{ $project->legal_requirements }}</p>
+                                </div>
+                            @endif
+
+                            @if ($project->reference_links)
+                                <div>
+                                    <h3 class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Referencias</h3>
+                                    <div class="mt-2 space-y-1 text-sm">
+                                        @foreach (preg_split('/\r\n|\r|\n/', $project->reference_links) as $referenceLink)
+                                            @php $referenceLink = trim($referenceLink); @endphp
+                                            @if ($referenceLink !== '')
+                                                @if (filter_var($referenceLink, FILTER_VALIDATE_URL))
+                                                    <a href="{{ $referenceLink }}" target="_blank" rel="noreferrer" class="block break-all font-medium hover:underline" style="color:var(--brand-amber)">{{ $referenceLink }}</a>
+                                                @else
+                                                    <div class="break-all text-slate-600">{{ $referenceLink }}</div>
+                                                @endif
+                                            @endif
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
+
+        @if ($project->workloads->isNotEmpty())
+            <section class="panel p-6">
+                <div class="mb-5">
+                    <h2 class="text-lg font-semibold text-slate-950">Cargas por responsable</h2>
+                    <p class="mt-1 text-sm text-slate-500">Horas iniciales asignadas por rol para alimentar la carga diaria.</p>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead class="text-left text-xs uppercase tracking-[0.16em] text-slate-400">
+                            <tr>
+                                <th class="py-2 pr-4 font-semibold">Rol</th>
+                                <th class="py-2 pr-4 font-semibold">Responsable</th>
+                                <th class="py-2 pr-4 font-semibold">Día de carga</th>
+                                <th class="py-2 pr-4 font-semibold">Horas</th>
+                                <th class="py-2 font-semibold">Actividad</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-stone-100">
+                            @foreach ($project->workloads->sortBy('work_date') as $workload)
+                                <tr>
+                                    <td class="py-3 pr-4 font-medium text-slate-900">{{ $workloadRoles[$workload->role] ?? $workload->role }}</td>
+                                    <td class="py-3 pr-4 text-slate-600">{{ $workload->user?->name ?: 'Sin asignar' }}</td>
+                                    <td class="py-3 pr-4 text-slate-600">{{ $workload->work_date?->translatedFormat('d M Y') ?: 'Sin fecha' }}</td>
+                                    <td class="py-3 pr-4 text-slate-600">{{ \App\Models\Task::formatEstimatedMinutes($workload->estimated_minutes) }}</td>
+                                    <td class="py-3 text-slate-600">{{ $workload->notes ?: 'Sin detalle' }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        @endif
 
         {{-- Board --}}
         <section class="panel p-7 xl:p-8">
             <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                     <h2 class="text-lg font-semibold text-slate-950">Tablero del proyecto</h2>
-                    <p class="mt-1 max-w-3xl text-sm text-slate-500">En desktop puedes arrastrar tarjetas entre columnas. Para editar descripción o seguimiento fino, abre la tarea.</p>
+                    <p class="mt-1 max-w-3xl text-sm text-slate-500">En computadora puedes arrastrar tarjetas entre columnas. Para editar descripción o seguimiento fino, abre la tarea.</p>
                 </div>
 
                 <div class="flex flex-wrap shrink-0 items-center gap-2">
@@ -224,16 +299,16 @@
                                                         {{ $taskPriorityMeta[$task->priority]['label'] }}
                                                     </span>
                                                     <span class="rounded-full border px-2.5 py-1 {{ $isOverdue ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-stone-200 bg-stone-50 text-slate-500' }}">
-                                                        {{ $task->due_at?->format('d M Y') ?: 'Sin fecha' }}
+                                                        {{ $task->due_at?->translatedFormat('d M Y') ?: 'Sin fecha' }}
                                                     </span>
                                                     <span class="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-slate-500">
-                                                        Plan {{ $task->planned_for?->format('d M') ?: 'sin fecha' }}
+                                                        Carga {{ $task->planned_for?->translatedFormat('d M') ?: 'sin fecha' }}
                                                     </span>
                                                     <span class="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-slate-500">
                                                         {{ \App\Models\Task::formatEstimatedMinutes($task->estimated_minutes) }}
                                                     </span>
                                                     <span class="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-slate-500">
-                                                        {{ $task->completed_subtasks_count }}/{{ $task->subtasks_count }} checklist
+                                                        {{ $task->completed_subtasks_count }}/{{ $task->subtasks_count }} lista
                                                     </span>
                                                     @if ($openSubtasksCount > 0)
                                                         <span class="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-amber-700">
@@ -321,9 +396,14 @@
                     </div>
 
                     <div>
-                        <label class="field-label" for="ep-type">Tipo de proyecto</label>
+                        <label class="field-label" for="ep-type">Tipo de material</label>
                         <input id="ep-type" name="project_type" class="field" value="{{ $project->project_type }}" required>
                     </div>
+
+                    @include('projects._context-fields', [
+                        'project' => $project,
+                        'fieldPrefix' => 'ep-',
+                    ])
 
                     <div>
                         <label class="field-label" for="ep-owner">Responsable</label>
@@ -343,7 +423,7 @@
                         <label class="field-label" for="ep-status">Estatus</label>
                         <select id="ep-status" name="status" class="field">
                             @foreach ($projectStatuses as $status)
-                                <option value="{{ $status }}" @selected($project->status === $status)>{{ str($status)->replace('_', ' ')->title() }}</option>
+                                <option value="{{ $status }}" @selected($project->status === $status)>{{ \App\Support\OperationalLabels::get($status) }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -352,7 +432,7 @@
                         <label class="field-label" for="ep-priority">Prioridad</label>
                         <select id="ep-priority" name="priority" class="field">
                             @foreach ($projectPriorities as $priority)
-                                <option value="{{ $priority }}" @selected($project->priority === $priority)>{{ str($priority)->title() }}</option>
+                                <option value="{{ $priority }}" @selected($project->priority === $priority)>{{ \App\Support\OperationalLabels::get($priority) }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -361,18 +441,18 @@
                         <label class="field-label" for="ep-stage">Etapa actual</label>
                         <select id="ep-stage" name="current_stage" class="field">
                             @foreach ($projectStages as $stage)
-                                <option value="{{ $stage }}" @selected($project->current_stage === $stage)>{{ str($stage)->replace('_', ' ')->title() }}</option>
+                                <option value="{{ $stage }}" @selected($project->current_stage === $stage)>{{ \App\Support\OperationalLabels::get($stage) }}</option>
                             @endforeach
                         </select>
                     </div>
 
                     <div>
-                        <label class="field-label" for="ep-starts-at">Inicio</label>
+                        <label class="field-label" for="ep-starts-at">Fecha de inicio</label>
                         <input id="ep-starts-at" type="date" name="starts_at" class="field" value="{{ $project->starts_at?->format('Y-m-d') }}">
                     </div>
 
                     <div>
-                        <label class="field-label" for="ep-due-at">Fecha compromiso</label>
+                        <label class="field-label" for="ep-due-at">Fecha de entrega</label>
                         <input id="ep-due-at" type="date" name="due_at" class="field" value="{{ $project->due_at?->format('Y-m-d') }}">
                     </div>
 
@@ -380,6 +460,12 @@
                         <label class="field-label" for="ep-description">Descripción</label>
                         <textarea id="ep-description" name="description" rows="3" class="field">{{ $project->description }}</textarea>
                     </div>
+
+                    @include('projects._workload-fields', [
+                        'project' => $project,
+                        'people' => $users,
+                        'fieldPrefix' => 'ep-',
+                    ])
 
                     <div class="lg:col-span-2 flex items-center justify-between gap-3">
                         <form
@@ -437,7 +523,7 @@
                 <div class="modal-header flex items-start justify-between gap-4">
                     <div>
                         <h2 class="text-lg font-semibold text-slate-950">Nueva tarea</h2>
-                        <p class="mt-1 text-sm text-slate-500">Crea el pendiente con responsable, fecha y checklist desde el arranque para que el tablero nazca ordenado.</p>
+                        <p class="mt-1 text-sm text-slate-500">Crea el pendiente con responsable, fecha y lista de pendientes desde el arranque para que el tablero nazca ordenado.</p>
                     </div>
                     <button type="button" @click="taskModal = false" class="mt-0.5 shrink-0 text-slate-400 hover:text-slate-700">
                         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -474,12 +560,12 @@
                         </div>
 
                         <div>
-                            <label class="field-label" for="task-due-at">Fecha compromiso</label>
+                            <label class="field-label" for="task-due-at">Fecha de entrega</label>
                             <input id="task-due-at" type="date" name="due_at" class="field" value="{{ old('due_at') }}">
                         </div>
 
                         <div>
-                            <label class="field-label" for="task-planned-for">Fecha de trabajo</label>
+                            <label class="field-label" for="task-planned-for">Día de carga</label>
                             <input id="task-planned-for" type="date" name="planned_for" class="field" value="{{ old('planned_for', today()->format('Y-m-d')) }}">
                             <x-input-error :messages="$errors->get('planned_for')" class="mt-2" />
                         </div>
@@ -521,7 +607,7 @@ Preparar primera propuesta
 Mandar a cliente"
                             >{{ old('subtasks') }}</textarea>
                             <x-input-error :messages="$errors->get('subtasks')" class="mt-2" />
-                            <p class="mt-2 text-xs uppercase tracking-[0.18em] text-slate-400">Tip: si ya conoces el checklist, cárgalo aquí y el equipo arranca con orden.</p>
+                            <p class="mt-2 text-xs uppercase tracking-[0.18em] text-slate-400">Tip: si ya conoces la lista de pendientes, cárgala aquí y el equipo arranca con orden.</p>
                         </div>
 
                         <div class="lg:col-span-2 flex justify-end gap-3">

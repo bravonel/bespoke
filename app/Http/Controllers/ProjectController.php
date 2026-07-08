@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Brand;
 use App\Models\Client;
 use App\Models\Project;
+use App\Models\ProjectWorkload;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
@@ -50,6 +51,8 @@ class ProjectController extends Controller
             'statuses' => Project::statusOptions(),
             'priorities' => Project::priorityOptions(),
             'stages' => Project::stageOptions(),
+            'deliveryTypes' => Project::deliveryTypeOptions(),
+            'workloadRoles' => ProjectWorkload::roleOptions(),
             'filters' => $request->only(['client_id', 'status', 'stage', 'q']),
         ]);
     }
@@ -63,6 +66,8 @@ class ProjectController extends Controller
             'statuses' => Project::statusOptions(),
             'priorities' => Project::priorityOptions(),
             'stages' => Project::stageOptions(),
+            'deliveryTypes' => Project::deliveryTypeOptions(),
+            'workloadRoles' => ProjectWorkload::roleOptions(),
         ]);
     }
 
@@ -84,19 +89,31 @@ class ProjectController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'odt_code' => ['nullable', 'string', 'max:255', 'unique:projects,odt_code'],
             'project_type' => ['required', 'string', 'max:255'],
+            'delivery_type' => ['nullable', Rule::in(array_keys(Project::deliveryTypeOptions()))],
+            'target_audience' => ['nullable', 'string', 'max:255'],
+            'material_size' => ['nullable', 'string', 'max:255'],
             'priority' => ['required', Rule::in(Project::priorityOptions())],
             'status' => ['required', Rule::in(Project::statusOptions())],
             'current_stage' => ['required', Rule::in(Project::stageOptions())],
             'description' => ['nullable', 'string'],
+            'legal_requirements' => ['nullable', 'string'],
+            'reference_links' => ['nullable', 'string'],
             'starts_at' => ['nullable', 'date'],
             'due_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
+            'workloads' => ['nullable', 'array'],
+            'workloads.*.user_id' => ['nullable', 'exists:users,id'],
+            'workloads.*.work_date' => ['nullable', 'date'],
+            'workloads.*.estimated_hours' => ['nullable', 'numeric', 'min:0', 'max:24'],
+            'workloads.*.notes' => ['nullable', 'string', 'max:255'],
         ]);
 
         $project = Project::create([
-            ...$validated,
+            ...collect($validated)->except('workloads')->all(),
             'owner_id' => $validated['owner_id'] ?? $request->user()->id,
             'code' => 'BSP-'.Str::upper(Str::random(6)),
         ]);
+
+        $this->syncWorkloads($project, $validated['workloads'] ?? []);
 
         return to_route('projects.show', $project)->with('status', 'Proyecto creado.');
     }
@@ -126,15 +143,26 @@ class ProjectController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'odt_code' => ['nullable', 'string', 'max:255', Rule::unique('projects', 'odt_code')->ignore($project)],
             'project_type' => ['required', 'string', 'max:255'],
+            'delivery_type' => ['nullable', Rule::in(array_keys(Project::deliveryTypeOptions()))],
+            'target_audience' => ['nullable', 'string', 'max:255'],
+            'material_size' => ['nullable', 'string', 'max:255'],
             'priority' => ['required', Rule::in(Project::priorityOptions())],
             'status' => ['required', Rule::in(Project::statusOptions())],
             'current_stage' => ['required', Rule::in(Project::stageOptions())],
             'description' => ['nullable', 'string'],
+            'legal_requirements' => ['nullable', 'string'],
+            'reference_links' => ['nullable', 'string'],
             'starts_at' => ['nullable', 'date'],
             'due_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
+            'workloads' => ['nullable', 'array'],
+            'workloads.*.user_id' => ['nullable', 'exists:users,id'],
+            'workloads.*.work_date' => ['nullable', 'date'],
+            'workloads.*.estimated_hours' => ['nullable', 'numeric', 'min:0', 'max:24'],
+            'workloads.*.notes' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $project->update($validated);
+        $project->update(collect($validated)->except('workloads')->all());
+        $this->syncWorkloads($project, $validated['workloads'] ?? []);
 
         return to_route('projects.show', $project)->with('status', 'Proyecto actualizado.');
     }
@@ -145,6 +173,7 @@ class ProjectController extends Controller
             'client',
             'brand',
             'owner',
+            'workloads.user',
             'tasks' => fn ($query) => $query
                 ->with('assignee')
                 ->with([
@@ -195,6 +224,8 @@ class ProjectController extends Controller
             'projectStatuses' => Project::statusOptions(),
             'projectPriorities' => Project::priorityOptions(),
             'projectStages' => Project::stageOptions(),
+            'deliveryTypes' => Project::deliveryTypeOptions(),
+            'workloadRoles' => ProjectWorkload::roleOptions(),
             'boardSummary' => [
                 'total_tasks' => $project->tasks->count(),
                 'done_tasks' => $doneTasks,
@@ -209,5 +240,39 @@ class ProjectController extends Controller
                 'completion_rate' => $completionRate,
             ],
         ]);
+    }
+
+    private function syncWorkloads(Project $project, array $workloads): void
+    {
+        $project->workloads()->delete();
+
+        foreach (ProjectWorkload::roleOptions() as $role => $label) {
+            $row = $workloads[$role] ?? [];
+            $userId = filled($row['user_id'] ?? null) ? (int) $row['user_id'] : null;
+            $workDate = filled($row['work_date'] ?? null) ? $row['work_date'] : null;
+            $estimatedMinutes = $this->estimatedMinutes($row['estimated_hours'] ?? null);
+            $notes = filled($row['notes'] ?? null) ? trim((string) $row['notes']) : null;
+
+            if ($userId === null && $workDate === null && $estimatedMinutes === null && $notes === null) {
+                continue;
+            }
+
+            $project->workloads()->create([
+                'user_id' => $userId,
+                'role' => $role,
+                'work_date' => $workDate,
+                'estimated_minutes' => $estimatedMinutes,
+                'notes' => $notes,
+            ]);
+        }
+    }
+
+    private function estimatedMinutes(null|int|float|string $hours): ?int
+    {
+        if ($hours === null || $hours === '') {
+            return null;
+        }
+
+        return (int) round(((float) $hours) * 60);
     }
 }

@@ -27,20 +27,20 @@
                 <div class="mt-3 text-lg font-semibold text-slate-950">{{ $task->assignee?->name ?: 'Sin asignar' }}</div>
             </div>
             <div class="metric-card">
-                <div class="metric-label">Vence</div>
-                <div class="mt-3 text-lg font-semibold text-slate-950">{{ $task->due_at?->format('d M Y') ?: 'Sin fecha' }}</div>
+                <div class="metric-label">Entrega</div>
+                <div class="mt-3 text-lg font-semibold text-slate-950">{{ $task->due_at?->translatedFormat('d M Y') ?: 'Sin fecha' }}</div>
             </div>
             <div class="metric-card">
                 <div class="metric-label">Prioridad</div>
                 <div class="mt-3 text-lg font-semibold text-slate-950">{{ $taskPriorityMeta[$task->priority]['label'] }}</div>
             </div>
             <div class="metric-card">
-                <div class="metric-label">Plan diario</div>
-                <div class="mt-3 text-lg font-semibold text-slate-950">{{ $task->planned_for?->format('d M Y') ?: 'Sin fecha' }}</div>
+                <div class="metric-label">Carga diaria</div>
+                <div class="mt-3 text-lg font-semibold text-slate-950">{{ $task->planned_for?->translatedFormat('d M Y') ?: 'Sin fecha' }}</div>
                 <div class="text-sm font-semibold text-slate-500">{{ \App\Models\Task::formatEstimatedMinutes($task->estimated_minutes) }}</div>
             </div>
             <div class="metric-card">
-                <div class="metric-label">Checklist</div>
+                <div class="metric-label">Lista</div>
                 <div class="mt-3 text-lg font-semibold text-slate-950">{{ $task->completed_subtasks_count }}/{{ $task->subtasks_count }}</div>
             </div>
         </div>
@@ -88,7 +88,7 @@
             <section class="panel p-7 xl:p-8">
                 <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                     <div>
-                        <h2 class="text-lg font-semibold text-slate-950">Checklist y seguimiento</h2>
+                        <h2 class="text-lg font-semibold text-slate-950">Lista y seguimiento</h2>
                         <p class="mt-2 text-sm text-slate-500">Aquí puedes cerrar subtareas y ajustar el estado sin sobrecargar la tarjeta del tablero.</p>
                     </div>
 
@@ -108,7 +108,7 @@
 
                 <div class="mt-7 rounded-3xl border border-stone-200 bg-stone-50/80 p-5">
                     <div class="flex items-center justify-between gap-3">
-                        <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Avance del checklist</div>
+                        <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Avance de la lista</div>
                         <div class="text-sm font-semibold text-slate-700">
                             {{ $task->completed_subtasks_count }}/{{ $task->subtasks_count ?: 0 }}
                         </div>

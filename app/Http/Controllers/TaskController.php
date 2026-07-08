@@ -111,7 +111,7 @@ class TaskController extends Controller
 
         $task->update($validated);
 
-        return back()->with('status', 'Fecha de trabajo actualizada.');
+        return back()->with('status', 'Día de carga actualizado.');
     }
 
     public function updateStatus(Request $request, Task $task): RedirectResponse

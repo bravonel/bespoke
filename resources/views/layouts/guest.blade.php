@@ -30,7 +30,7 @@
                     <img src="{{ asset('assets/logo.png') }}" alt="Bespoke" class="w-full">
 
                     <p class="mt-10 text-sm leading-7 text-slate-500">
-                        El sistema operativo de Bespoke. Proyectos, tareas y checklist en un solo lugar — para que el equipo siempre sepa qué sigue.
+                        El sistema operativo de Bespoke. Proyectos, tareas y listas de pendientes en un solo lugar, para que el equipo siempre sepa qué sigue.
                     </p>
 
                     <div class="mt-10 flex items-center gap-3">
