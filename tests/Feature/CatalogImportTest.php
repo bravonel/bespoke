@@ -16,14 +16,16 @@ class CatalogImportTest extends TestCase
     {
         $path = storage_path('framework/testing/catalogo-clientes-marcas.xlsx');
         $this->writeWorkbook($path);
+        $clientCount = Client::count();
+        $brandCount = Brand::count();
 
         $this->artisan('catalog:import-clients-brands', [
             'path' => $path,
             '--dry-run' => true,
         ])->assertSuccessful();
 
-        $this->assertSame(0, Client::count());
-        $this->assertSame(0, Brand::count());
+        $this->assertSame($clientCount, Client::count());
+        $this->assertSame($brandCount, Brand::count());
 
         $this->artisan('catalog:import-clients-brands', [
             'path' => $path,
@@ -33,14 +35,14 @@ class CatalogImportTest extends TestCase
         $this->assertDatabaseHas('clients', ['name' => 'Roche diagnóstica']);
         $this->assertDatabaseHas('brands', ['name' => 'Gynophillus restore']);
         $this->assertDatabaseHas('brands', ['name' => 'Inofolic HP']);
-        $this->assertDatabaseHas('brands', ['name' => 'Accu-Chek']);
+        $this->assertDatabaseHas('brands', ['name' => 'Soluciones laboratorio']);
 
         $this->artisan('catalog:import-clients-brands', [
             'path' => $path,
         ])->assertSuccessful();
 
-        $this->assertSame(2, Client::count());
-        $this->assertSame(3, Brand::count());
+        $this->assertSame($clientCount, Client::count());
+        $this->assertSame($brandCount, Brand::count());
     }
 
     private function writeWorkbook(string $path): void
@@ -102,7 +104,7 @@ XML);
     </row>
     <row r="5">
       <c r="A5" t="inlineStr"><is><t>Roche diagnóstica</t></is></c>
-      <c r="B5" t="inlineStr"><is><t>Accu-Chek</t></is></c>
+      <c r="B5" t="inlineStr"><is><t>Soluciones laboratorio</t></is></c>
     </row>
   </sheetData>
 </worksheet>
