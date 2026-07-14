@@ -212,6 +212,8 @@ class ProjectController extends Controller
         $completionRate = $project->tasks->isEmpty()
             ? 0
             : (int) round(($doneTasks / $project->tasks->count()) * 100);
+        $workloadRoles = ProjectWorkload::roleOptions();
+        $collaboratorLoadRows = $this->collaboratorLoadRows($project, $workloadRoles);
 
         return view('projects.show', [
             'project' => $project,
@@ -228,7 +230,8 @@ class ProjectController extends Controller
             'projectStages' => Project::stageOptions(),
             'materialTypes' => Project::materialTypeOptions(),
             'deliveryTypes' => Project::deliveryTypeOptions(),
-            'workloadRoles' => ProjectWorkload::roleOptions(),
+            'workloadRoles' => $workloadRoles,
+            'collaboratorLoadRows' => $collaboratorLoadRows,
             'boardSummary' => [
                 'total_tasks' => $project->tasks->count(),
                 'done_tasks' => $doneTasks,
@@ -243,6 +246,62 @@ class ProjectController extends Controller
                 'completion_rate' => $completionRate,
             ],
         ]);
+    }
+
+    private function collaboratorLoadRows(Project $project, array $workloadRoles): \Illuminate\Support\Collection
+    {
+        $taskRows = $project->tasks
+            ->where('status', '!=', 'done')
+            ->map(fn (Task $task) => [
+                'kind' => 'task',
+                'user_id' => $task->assigned_to,
+                'user' => $task->assignee,
+                'minutes' => $task->estimated_minutes,
+                'role' => null,
+                'missing_estimate' => $task->estimated_minutes === null,
+            ]);
+
+        $workloadRows = $project->workloads
+            ->map(fn (ProjectWorkload $workload) => [
+                'kind' => 'workload',
+                'user_id' => $workload->user_id,
+                'user' => $workload->user,
+                'minutes' => $workload->estimated_minutes,
+                'role' => $workloadRoles[$workload->role] ?? $workload->role,
+                'missing_estimate' => $workload->estimated_minutes === null,
+            ]);
+
+        return $taskRows
+            ->concat($workloadRows)
+            ->groupBy(fn (array $row) => $row['user_id'] ?: 'unassigned')
+            ->map(function ($rows) {
+                $firstAssignedRow = $rows->first(fn (array $row) => $row['user'] !== null);
+                $user = $firstAssignedRow['user'] ?? null;
+                $taskRows = $rows->where('kind', 'task');
+                $workloadRows = $rows->where('kind', 'workload');
+                $taskMinutes = (int) $taskRows->sum(fn (array $row) => $row['minutes'] ?? 0);
+                $workloadMinutes = (int) $workloadRows->sum(fn (array $row) => $row['minutes'] ?? 0);
+
+                return [
+                    'user' => $user,
+                    'task_count' => $taskRows->count(),
+                    'workload_count' => $workloadRows->count(),
+                    'task_minutes' => $taskMinutes,
+                    'workload_minutes' => $workloadMinutes,
+                    'total_minutes' => $taskMinutes + $workloadMinutes,
+                    'missing_estimates' => $rows->where('missing_estimate', true)->count(),
+                    'roles' => $workloadRows
+                        ->pluck('role')
+                        ->filter()
+                        ->unique()
+                        ->values(),
+                ];
+            })
+            ->sortBy([
+                ['total_minutes', 'desc'],
+                ['missing_estimates', 'desc'],
+            ])
+            ->values();
     }
 
     private function syncWorkloads(Project $project, array $workloads): void

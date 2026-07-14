@@ -188,6 +188,47 @@ class ProjectBoardTest extends TestCase
             ->assertSee('data-close-modal="edit-project"', false);
     }
 
+    public function test_project_detail_shows_hours_by_collaborator(): void
+    {
+        $user = User::factory()->create();
+        $designer = User::factory()->create([
+            'name' => 'Luis Cervantes',
+            'area' => 'Diseño',
+            'puesto' => 'Director de Arte',
+        ]);
+        $project = $this->makeProject($user);
+
+        ProjectWorkload::create([
+            'project_id' => $project->id,
+            'user_id' => $designer->id,
+            'role' => 'design',
+            'work_date' => '2026-07-09',
+            'estimated_minutes' => 240,
+            'notes' => 'Diseño de propuesta',
+        ]);
+
+        Task::create([
+            'project_id' => $project->id,
+            'assigned_to' => $designer->id,
+            'title' => 'Ajustar layout',
+            'status' => 'todo',
+            'priority' => 'normal',
+            'estimated_minutes' => 120,
+            'sort_order' => 0,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('projects.show', $project));
+
+        $response
+            ->assertOk()
+            ->assertSee('Horas por colaborador')
+            ->assertSee('Luis Cervantes')
+            ->assertSee('Director de Arte')
+            ->assertSee('2 h')
+            ->assertSee('4 h')
+            ->assertSee('6 h');
+    }
+
     public function test_daily_load_includes_project_workloads(): void
     {
         $user = User::factory()->create([

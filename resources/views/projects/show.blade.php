@@ -156,6 +156,66 @@
             </div>
         </div>
 
+        @if ($collaboratorLoadRows->isNotEmpty())
+            <section class="panel p-6">
+                <div class="mb-5">
+                    <h2 class="text-lg font-semibold text-slate-950">Horas por colaborador</h2>
+                    <p class="mt-1 text-sm text-slate-500">Suma de tareas abiertas y cargas iniciales asignadas dentro de este proyecto.</p>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead class="text-left text-xs uppercase tracking-[0.16em] text-slate-400">
+                            <tr>
+                                <th class="py-2 pr-4 font-semibold">Colaborador</th>
+                                <th class="py-2 pr-4 font-semibold">Rol / área</th>
+                                <th class="py-2 pr-4 font-semibold">Tareas abiertas</th>
+                                <th class="py-2 pr-4 font-semibold">Cargas iniciales</th>
+                                <th class="py-2 pr-4 font-semibold">Total</th>
+                                <th class="py-2 font-semibold">Sin horas</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-stone-100">
+                            @foreach ($collaboratorLoadRows as $row)
+                                @php $person = $row['user']; @endphp
+                                <tr>
+                                    <td class="py-3 pr-4 font-medium text-slate-900">{{ $person?->name ?: 'Sin asignar' }}</td>
+                                    <td class="py-3 pr-4 text-slate-600">
+                                        @if ($person)
+                                            <div>{{ $person->area ? \App\Support\OperationalLabels::get($person->area) : 'Sin área' }}</div>
+                                            @if ($person->puesto)
+                                                <div class="text-xs text-slate-400">{{ \App\Support\OperationalLabels::get($person->puesto) }}</div>
+                                            @endif
+                                        @elseif ($row['roles']->isNotEmpty())
+                                            {{ $row['roles']->join(', ') }}
+                                        @else
+                                            Sin área
+                                        @endif
+                                    </td>
+                                    <td class="py-3 pr-4 text-slate-600">
+                                        <span class="font-semibold text-slate-900">{{ \App\Models\Task::formatEstimatedMinutes($row['task_minutes']) }}</span>
+                                        <span class="text-xs text-slate-400">· {{ $row['task_count'] }} tareas</span>
+                                    </td>
+                                    <td class="py-3 pr-4 text-slate-600">
+                                        <span class="font-semibold text-slate-900">{{ \App\Models\Task::formatEstimatedMinutes($row['workload_minutes']) }}</span>
+                                        <span class="text-xs text-slate-400">· {{ $row['workload_count'] }} cargas</span>
+                                    </td>
+                                    <td class="py-3 pr-4 font-semibold text-slate-950">{{ \App\Models\Task::formatEstimatedMinutes($row['total_minutes']) }}</td>
+                                    <td class="py-3">
+                                        @if ($row['missing_estimates'] > 0)
+                                            <span class="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">{{ $row['missing_estimates'] }}</span>
+                                        @else
+                                            <span class="text-slate-400">0</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        @endif
+
         @if ($project->workloads->isNotEmpty())
             <section class="panel p-6">
                 <div class="mb-5">
