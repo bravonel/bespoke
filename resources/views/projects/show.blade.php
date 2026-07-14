@@ -414,24 +414,10 @@
                     @csrf
                     @method('PATCH')
 
-                    <div>
-                        <label class="field-label" for="ep-client">Cliente</label>
-                        <select id="ep-client" name="client_id" class="field" required>
-                            @foreach ($clients as $client)
-                                <option value="{{ $client->id }}" @selected($project->client_id == $client->id)>{{ $client->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="field-label" for="ep-brand">Marca</label>
-                        <select id="ep-brand" name="brand_id" class="field">
-                            <option value="">Sin marca</option>
-                            @foreach ($brands as $brand)
-                                <option value="{{ $brand->id }}" @selected($project->brand_id == $brand->id)>{{ $brand->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
+                    @include('projects._client-brand-fields', [
+                        'project' => $project,
+                        'fieldPrefix' => 'ep-',
+                    ])
 
                     <div class="lg:col-span-2">
                         <label class="field-label" for="ep-name">Nombre del proyecto</label>

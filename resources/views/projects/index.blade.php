@@ -166,26 +166,10 @@
                         'fieldPrefix' => 'project-',
                     ])
 
-                    <div>
-                        <label class="field-label" for="project-client">Cliente</label>
-                        <select id="project-client" name="client_id" class="field" required>
-                            <option value="">Selecciona un cliente</option>
-                            @foreach ($clients as $client)
-                                <option value="{{ $client->id }}" @selected(old('client_id') == $client->id)>{{ $client->name }}</option>
-                            @endforeach
-                        </select>
-                        <x-input-error :messages="$errors->get('client_id')" class="mt-2" />
-                    </div>
-
-                    <div>
-                        <label class="field-label" for="project-brand">Marca</label>
-                        <select id="project-brand" name="brand_id" class="field">
-                            <option value="">Sin marca</option>
-                            @foreach ($brands as $brand)
-                                <option value="{{ $brand->id }}" @selected(old('brand_id') == $brand->id)>{{ $brand->name }} · {{ $brand->client->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
+                    @include('projects._client-brand-fields', [
+                        'project' => null,
+                        'fieldPrefix' => 'project-',
+                    ])
 
                     <div>
                         <label class="field-label" for="project-owner">Responsable</label>
