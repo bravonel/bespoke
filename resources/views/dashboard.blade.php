@@ -46,7 +46,7 @@
             <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div>
                     <h2 class="text-lg font-semibold text-slate-950">Carga diaria</h2>
-                    <div class="mt-1 text-sm text-slate-500">{{ $selectedDate->translatedFormat('d M Y') }}</div>
+                    <div class="mt-1 text-sm text-slate-500">Día de carga {{ $selectedDate->translatedFormat('d M Y') }}</div>
                 </div>
 
                 <form method="GET" action="{{ route('dashboard') }}" class="flex w-full flex-wrap items-end gap-x-3 gap-y-5 lg:w-auto lg:justify-end">
@@ -89,7 +89,7 @@
                     <div class="mt-2 text-2xl font-semibold text-slate-950">{{ $dailySummary['tasks'] }}</div>
                 </div>
                 <div class="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
-                    <div class="metric-label">Horas</div>
+                    <div class="metric-label">Horas cargadas</div>
                     <div class="mt-2 text-2xl font-semibold text-slate-950">{{ \App\Models\Task::formatEstimatedMinutes($dailySummary['estimated_minutes']) }}</div>
                 </div>
                 <div class="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
@@ -97,7 +97,7 @@
                     <div class="mt-2 text-2xl font-semibold text-slate-950">{{ $dailySummary['blocked'] }}</div>
                 </div>
                 <div class="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
-                    <div class="metric-label">Vencidas</div>
+                    <div class="metric-label">Vencidas al día</div>
                     <div class="mt-2 text-2xl font-semibold text-slate-950">{{ $dailySummary['overdue'] }}</div>
                 </div>
                 <div class="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
@@ -123,9 +123,29 @@
                                         · {{ \App\Support\OperationalLabels::get($assignee->puesto) }}
                                     @endif
                                 </div>
+
+                                @if ($assignee)
+                                    <form method="POST" action="{{ route('users.capacity.update', $assignee) }}" class="mt-3 flex flex-wrap items-center gap-2">
+                                        @csrf
+                                        @method('PATCH')
+                                        <label class="sr-only" for="capacity-{{ $assignee->id }}">Capacidad diaria</label>
+                                        <input
+                                            id="capacity-{{ $assignee->id }}"
+                                            type="number"
+                                            min="0.25"
+                                            max="24"
+                                            step="0.25"
+                                            name="daily_capacity_hours"
+                                            class="field mt-0 w-24 px-3 py-2 text-xs"
+                                            value="{{ $assignee->dailyCapacityHoursForInput() }}"
+                                        >
+                                        <span class="text-xs font-medium text-slate-500">h/día</span>
+                                        <button class="button-secondary px-3 py-2 text-xs">Guardar</button>
+                                    </form>
+                                @endif
                             </div>
 
-                            <div class="grid gap-2 text-sm sm:grid-cols-4 lg:min-w-[34rem]">
+                            <div class="grid gap-2 text-sm sm:grid-cols-2 xl:grid-cols-5 lg:min-w-[42rem]">
                                 <div class="rounded-xl bg-stone-50 px-3 py-2">
                                     <div class="text-xs uppercase tracking-[0.16em] text-slate-400">Actividades</div>
                                     <div class="mt-1 font-semibold text-slate-900">{{ $row['task_count'] }}</div>
@@ -139,6 +159,10 @@
                                 <div class="rounded-xl bg-stone-50 px-3 py-2">
                                     <div class="text-xs uppercase tracking-[0.16em] text-slate-400">Bloqueadas</div>
                                     <div class="mt-1 font-semibold text-slate-900">{{ $row['blocked_count'] }}</div>
+                                </div>
+                                <div class="rounded-xl bg-stone-50 px-3 py-2">
+                                    <div class="text-xs uppercase tracking-[0.16em] text-slate-400">Vencidas</div>
+                                    <div class="mt-1 font-semibold text-slate-900">{{ $row['overdue_count'] }}</div>
                                 </div>
                                 <div class="rounded-xl bg-stone-50 px-3 py-2">
                                     <div class="text-xs uppercase tracking-[0.16em] text-slate-400">Sin horas</div>
@@ -158,6 +182,7 @@
                                         <th class="py-2 pr-4 font-semibold">Actividad</th>
                                         <th class="py-2 pr-4 font-semibold">Proyecto</th>
                                         <th class="py-2 pr-4 font-semibold">ODT</th>
+                                        <th class="py-2 pr-4 font-semibold">Día de carga</th>
                                         <th class="py-2 pr-4 font-semibold">Tipo</th>
                                         <th class="py-2 pr-4 font-semibold">Horas</th>
                                         <th class="py-2 pr-4 font-semibold">Entrega</th>
@@ -178,7 +203,9 @@
                                                 @endif
                                             </td>
                                             <td class="py-3 pr-4 text-slate-600">
-                                                <div>{{ $project->name }}</div>
+                                                <a href="{{ route('projects.show', ['project' => $project, 'edit' => 1]) }}" class="font-medium text-slate-700 hover:underline" style="color:var(--brand-amber)">
+                                                    {{ $project->name }}
+                                                </a>
                                                 <div class="text-xs text-slate-400">
                                                     {{ $project->client->name }}
                                                     @if ($project->brand)
@@ -187,6 +214,7 @@
                                                 </div>
                                             </td>
                                             <td class="py-3 pr-4 text-slate-600">{{ $project->odt_code ?: 'Sin ODT' }}</td>
+                                            <td class="py-3 pr-4 text-slate-600">{{ $activity['activity_date']?->translatedFormat('d M Y') ?: 'Sin fecha' }}</td>
                                             <td class="py-3 pr-4">
                                                 @if ($task)
                                                     <x-status-badge :value="$task->status" />
@@ -201,9 +229,11 @@
                                                     <form method="POST" action="{{ route('tasks.update-schedule', $task) }}">
                                                         @csrf
                                                         @method('PATCH')
-                                                        <input type="hidden" name="planned_for" value="{{ today()->addDay()->format('Y-m-d') }}">
+                                                        <input type="hidden" name="planned_for" value="{{ $selectedDate->addDay()->format('Y-m-d') }}">
                                                         <button class="button-secondary px-3 py-1.5 text-xs">Pasar a mañana</button>
                                                     </form>
+                                                @elseif ($project)
+                                                    <a href="{{ route('projects.show', ['project' => $project, 'edit' => 1]) }}" class="button-secondary px-3 py-1.5 text-xs">Editar proyecto</a>
                                                 @endif
                                             </td>
                                         </tr>
@@ -289,6 +319,44 @@
                     @empty
                         <div class="rounded-2xl bg-stone-50 p-5 text-sm text-slate-500">Agrega tareas a un proyecto y aquí empezaremos a ver el ritmo operativo.</div>
                     @endforelse
+                </div>
+
+                <div class="mt-8 border-t border-stone-200 pt-6">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-950">Equipo activo</h3>
+                        <p class="mt-1 text-sm text-slate-500">Última actividad registrada dentro del sistema.</p>
+                    </div>
+
+                    <div class="mt-5 space-y-3">
+                        @forelse ($activeUsers as $person)
+                            <div class="flex items-start justify-between gap-4 rounded-2xl border border-stone-200 bg-white p-4">
+                                <div class="min-w-0">
+                                    <div class="flex items-center gap-2">
+                                        <span class="h-2.5 w-2.5 rounded-full {{ $person->isActiveNow() ? 'bg-emerald-500' : 'bg-stone-300' }}"></span>
+                                        <div class="truncate font-semibold text-slate-900">{{ $person->name }}</div>
+                                    </div>
+                                    <div class="mt-1 text-sm text-slate-500">
+                                        {{ $person->area ? \App\Support\OperationalLabels::get($person->area) : 'Sin área' }}
+                                        @if ($person->puesto)
+                                            · {{ \App\Support\OperationalLabels::get($person->puesto) }}
+                                        @endif
+                                    </div>
+                                    <div class="mt-2 text-xs text-slate-400">
+                                        Último inicio: {{ $person->lastLoginLabel() }}
+                                    </div>
+                                </div>
+
+                                <div class="shrink-0 text-right">
+                                    <div class="text-sm font-semibold {{ $person->isActiveNow() ? 'text-emerald-700' : 'text-slate-700' }}">{{ $person->lastSeenLabel() }}</div>
+                                    <div class="mt-1 text-xs uppercase tracking-[0.16em] text-slate-400">
+                                        {{ \App\Models\Task::formatEstimatedMinutes($person->daily_capacity_minutes) }} por día
+                                    </div>
+                                </div>
+                            </div>
+                        @empty
+                            <div class="rounded-2xl bg-stone-50 p-5 text-sm text-slate-500">Todavía no hay actividad registrada.</div>
+                        @endforelse
+                    </div>
                 </div>
             </div>
         </div>

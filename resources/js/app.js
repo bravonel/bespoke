@@ -14,6 +14,14 @@ document.addEventListener('click', (event) => {
     }
 });
 
+const openRequestedProjectModal = () => {
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.get('edit') === '1') {
+        window.dispatchEvent(new CustomEvent('open-modal', { detail: 'edit-project' }));
+    }
+};
+
 document.addEventListener('alpine:init', () => {
     Alpine.data('taskDrawer', () => ({
         isOpen: false,
@@ -47,6 +55,14 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 });
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', openRequestedProjectModal);
+} else {
+    window.setTimeout(openRequestedProjectModal, 0);
+}
+
+document.addEventListener('livewire:navigated', openRequestedProjectModal);
 
 const initializeTaskBoards = () => {
     document.querySelectorAll('[data-task-board]').forEach((board) => {

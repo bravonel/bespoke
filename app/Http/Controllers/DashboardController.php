@@ -9,6 +9,7 @@ use App\Models\ProjectWorkload;
 use App\Models\Task;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 
@@ -90,9 +91,10 @@ class DashboardController extends Controller
                 'role' => null,
                 'status' => $task->status,
                 'estimated_minutes' => $task->estimated_minutes,
+                'activity_date' => $task->planned_for,
                 'due_at' => $task->due_at,
                 'is_blocked' => $task->status === 'blocked',
-                'is_overdue' => $task->status !== 'done' && $task->due_at?->isPast(),
+                'is_overdue' => $this->isOverdueForSelectedDate($task->due_at, $task->status, $selectedDate),
                 'missing_estimate' => $task->estimated_minutes === null,
                 'task' => $task,
             ])
@@ -106,9 +108,10 @@ class DashboardController extends Controller
                 'role' => $workloadRoles[$workload->role] ?? $workload->role,
                 'status' => null,
                 'estimated_minutes' => $workload->estimated_minutes,
+                'activity_date' => $workload->work_date,
                 'due_at' => $workload->project?->due_at,
                 'is_blocked' => false,
-                'is_overdue' => $workload->project?->status !== 'done' && $workload->project?->due_at?->isPast(),
+                'is_overdue' => $this->isOverdueForSelectedDate($workload->project?->due_at, $workload->project?->status, $selectedDate),
                 'missing_estimate' => $workload->estimated_minutes === null,
                 'workload' => $workload,
             ]));
@@ -126,6 +129,7 @@ class DashboardController extends Controller
                     'task_count' => $activities->count(),
                     'estimated_minutes' => $estimated,
                     'capacity_minutes' => $capacity,
+                    'capacity_hours' => $capacity / 60,
                     'capacity_percent' => $capacity > 0 ? min(160, (int) round(($estimated / $capacity) * 100)) : 0,
                     'blocked_count' => $activities->where('is_blocked', true)->count(),
                     'overdue_count' => $activities->where('is_overdue', true)->count(),
@@ -157,6 +161,12 @@ class DashboardController extends Controller
             'selectedDate' => $selectedDate,
             'areas' => User::query()->whereNotNull('area')->distinct()->orderBy('area')->pluck('area'),
             'users' => User::query()->orderBy('name')->get(),
+            'activeUsers' => User::query()
+                ->orderByRaw('last_seen_at is null')
+                ->orderByDesc('last_seen_at')
+                ->orderBy('name')
+                ->limit(10)
+                ->get(),
             'dailyFilters' => [
                 'area' => $areaFilter,
                 'user_id' => $userFilter,
@@ -177,5 +187,14 @@ class DashboardController extends Controller
         } catch (\Throwable) {
             return CarbonImmutable::today();
         }
+    }
+
+    private function isOverdueForSelectedDate(?CarbonInterface $dueAt, ?string $status, CarbonImmutable $selectedDate): bool
+    {
+        if (! $dueAt || $status === 'done') {
+            return false;
+        }
+
+        return CarbonImmutable::instance($dueAt)->startOfDay()->lt($selectedDate->startOfDay());
     }
 }

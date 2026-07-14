@@ -38,6 +38,11 @@ class LoginForm extends Form
             ]);
         }
 
+        Auth::user()?->forceFill([
+            'last_login_at' => now(),
+            'last_seen_at' => now(),
+        ])->saveQuietly();
+
         RateLimiter::clear($this->throttleKey());
     }
 

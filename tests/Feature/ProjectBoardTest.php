@@ -9,6 +9,7 @@ use App\Models\Subtask;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 class ProjectBoardTest extends TestCase
@@ -72,9 +73,45 @@ class ProjectBoardTest extends TestCase
         $response
             ->assertOk()
             ->assertSee('Carga diaria')
+            ->assertSee('Día de carga')
             ->assertSee('Persona de Arte')
             ->assertSee('Ajustar storyboard')
-            ->assertSee('4 h / 8 h');
+            ->assertSee('4 h / 8 h')
+            ->assertSee(route('projects.show', ['project' => $project, 'edit' => 1]), false);
+    }
+
+    public function test_daily_load_overdue_counts_use_selected_date(): void
+    {
+        Carbon::setTestNow('2026-07-14 10:00:00');
+
+        $user = User::factory()->create([
+            'name' => 'Alejandro Lira',
+            'daily_capacity_minutes' => 720,
+        ]);
+        $project = $this->makeProject($user);
+
+        Task::create([
+            'project_id' => $project->id,
+            'assigned_to' => $user->id,
+            'title' => 'Revisión paquete sometimiento',
+            'status' => 'in_progress',
+            'priority' => 'normal',
+            'planned_for' => '2026-07-13',
+            'due_at' => '2026-07-14',
+            'estimated_minutes' => 120,
+            'sort_order' => 0,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('dashboard', [
+            'date' => '2026-07-13',
+        ]));
+
+        $response->assertOk();
+
+        $this->assertSame(0, $response->viewData('dailySummary')['overdue']);
+        $this->assertSame(0, $response->viewData('dailyLoadRows')->first()['overdue_count']);
+
+        Carbon::setTestNow();
     }
 
     public function test_projects_can_store_an_odt_code(): void
@@ -172,6 +209,50 @@ class ProjectBoardTest extends TestCase
             ->assertSee('href="https://www.contoso.com/legal"', false)
             ->assertSee('href="https://contoso.sharepoint.com/referencias"', false)
             ->assertSee('target="_blank"', false);
+    }
+
+    public function test_task_descriptions_format_links(): void
+    {
+        $user = User::factory()->create();
+        $project = $this->makeProject($user);
+
+        $task = Task::create([
+            'project_id' => $project->id,
+            'title' => 'Subir referencias',
+            'description' => 'Carpeta https://contoso.sharepoint.com/tarea y respaldo www.contoso.com/backups.',
+            'status' => 'todo',
+            'priority' => 'normal',
+            'sort_order' => 0,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('tasks.show', $task));
+
+        $response
+            ->assertOk()
+            ->assertSee('href="https://contoso.sharepoint.com/tarea"', false)
+            ->assertSee('href="https://www.contoso.com/backups"', false)
+            ->assertSee('target="_blank"', false);
+
+        $drawer = $this->actingAs($user)->withHeader('X-Drawer', '1')->get(route('tasks.show', $task));
+
+        $drawer
+            ->assertOk()
+            ->assertSee('href="https://contoso.sharepoint.com/tarea"', false);
+    }
+
+    public function test_user_daily_capacity_can_be_updated(): void
+    {
+        $admin = User::factory()->create();
+        $person = User::factory()->create([
+            'daily_capacity_minutes' => 480,
+        ]);
+
+        $response = $this->actingAs($admin)->patch(route('users.capacity.update', $person), [
+            'daily_capacity_hours' => '12',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertSame(720, $person->refresh()->daily_capacity_minutes);
     }
 
     public function test_project_edit_button_has_modal_fallback_hook(): void

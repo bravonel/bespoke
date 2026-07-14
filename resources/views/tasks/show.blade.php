@@ -79,9 +79,11 @@
 
                 <div class="mt-6 rounded-3xl bg-stone-50 p-5">
                     <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Descripción</h3>
-                    <p class="mt-3 text-sm leading-7 text-slate-700">
-                        {{ $task->description ?: 'Todavía no hay una descripción detallada para esta tarea.' }}
-                    </p>
+                    @if ($task->description)
+                        <div class="mt-3 whitespace-pre-line break-words text-sm leading-7 text-slate-700">{!! \App\Support\LinkedText::render($task->description) !!}</div>
+                    @else
+                        <p class="mt-3 text-sm leading-7 text-slate-700">Todavía no hay una descripción detallada para esta tarea.</p>
+                    @endif
                 </div>
             </section>
 

@@ -7,15 +7,19 @@ use App\Http\Controllers\MyTasksController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\SubtaskController;
 use App\Http\Controllers\TaskController;
+use App\Http\Controllers\UserCapacityController;
+use App\Http\Middleware\TrackUserActivity;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'site-home')->name('welcome');
 
-Route::middleware('auth')->group(function (): void {
+Route::middleware(['auth', TrackUserActivity::class])->group(function (): void {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
     Route::get('profile', fn () => view('profile'))->name('profile');
 
     Route::get('my-tasks', MyTasksController::class)->name('tasks.mine');
+
+    Route::patch('users/{user}/capacity', [UserCapacityController::class, 'update'])->name('users.capacity.update');
 
     Route::get('clients', [ClientController::class, 'index'])->name('clients.index');
     Route::post('clients', [ClientController::class, 'store'])->name('clients.store');

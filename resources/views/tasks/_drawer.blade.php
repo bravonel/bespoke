@@ -94,9 +94,11 @@
         {{-- Description --}}
         <div class="mb-6 rounded-2xl bg-stone-50 p-5">
             <h3 class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Descripción</h3>
-            <p class="mt-3 text-sm leading-7 text-slate-700">
-                {{ $task->description ?: 'Sin descripción.' }}
-            </p>
+            @if ($task->description)
+                <div class="mt-3 whitespace-pre-line break-words text-sm leading-7 text-slate-700">{!! \App\Support\LinkedText::render($task->description) !!}</div>
+            @else
+                <p class="mt-3 text-sm leading-7 text-slate-700">Sin descripción.</p>
+            @endif
         </div>
 
         {{-- Lista --}}
