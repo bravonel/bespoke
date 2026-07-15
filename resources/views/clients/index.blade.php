@@ -14,15 +14,29 @@
     </x-slot>
 
     <div class="shell space-y-5">
-        <form method="GET" action="{{ route('clients.index') }}" class="flex flex-wrap items-end gap-3">
+        <form
+            method="GET"
+            action="{{ route('clients.index') }}"
+            class="flex flex-wrap items-end gap-3"
+            x-data="{
+                timer: null,
+                submitSoon() {
+                    clearTimeout(this.timer);
+                    this.timer = setTimeout(() => this.$el.requestSubmit(), 450);
+                },
+                submitNow() {
+                    this.$el.requestSubmit();
+                },
+            }"
+        >
             <div class="min-w-[13rem] flex-1">
                 <label class="field-label" for="f-q">Buscar</label>
-                <input id="f-q" type="text" name="q" class="field mt-0" placeholder="Cliente, contacto o correo…" value="{{ $filters['q'] ?? '' }}">
+                <input id="f-q" type="text" name="q" class="field mt-0" placeholder="Cliente, contacto o correo…" value="{{ $filters['q'] ?? '' }}" x-on:input="submitSoon()">
             </div>
 
             <div class="min-w-[9rem]">
                 <label class="field-label" for="f-status">Estatus</label>
-                <select id="f-status" name="status" class="field mt-0">
+                <select id="f-status" name="status" class="field mt-0" x-on:change="submitNow()">
                     <option value="">Todos</option>
                     @foreach ($statuses as $status)
                         <option value="{{ $status }}" @selected(($filters['status'] ?? '') === $status)>{{ \App\Support\OperationalLabels::get($status) }}</option>
@@ -31,7 +45,6 @@
             </div>
 
             <div class="flex gap-2">
-                <button type="submit" class="button-primary">Filtrar</button>
                 @if (array_filter($filters))
                     <a href="{{ route('clients.index') }}" class="button-secondary">Limpiar</a>
                 @endif

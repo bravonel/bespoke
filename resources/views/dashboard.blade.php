@@ -49,15 +49,30 @@
                     <div class="mt-1 text-sm text-slate-500">Día de carga {{ $selectedDate->translatedFormat('d M Y') }}</div>
                 </div>
 
-                <form method="GET" action="{{ route('dashboard') }}" class="flex w-full flex-wrap items-end gap-x-3 gap-y-5 lg:w-auto lg:justify-end">
+                @php
+                    $hasDailyFilters = $selectedDate->toDateString() !== today()->toDateString()
+                        || filled($dailyFilters['area'])
+                        || filled($dailyFilters['user_id']);
+                @endphp
+
+                <form
+                    method="GET"
+                    action="{{ route('dashboard') }}"
+                    class="flex w-full flex-wrap items-end gap-x-3 gap-y-5 lg:w-auto lg:justify-end"
+                    x-data="{
+                        submitNow() {
+                            this.$el.requestSubmit();
+                        },
+                    }"
+                >
                     <div class="w-full sm:w-40">
                         <label class="field-label block" for="daily-date">Fecha</label>
-                        <input id="daily-date" type="date" name="date" class="field mt-1.5 py-2.5" value="{{ $selectedDate->format('Y-m-d') }}">
+                        <input id="daily-date" type="date" name="date" class="field mt-1.5 py-2.5" value="{{ $selectedDate->format('Y-m-d') }}" x-on:change="submitNow()">
                     </div>
 
                     <div class="w-full sm:w-40">
                         <label class="field-label block" for="daily-area">Área</label>
-                        <select id="daily-area" name="area" class="field mt-1.5 py-2.5">
+                        <select id="daily-area" name="area" class="field mt-1.5 py-2.5" x-on:change="submitNow()">
                             <option value="">Todas</option>
                             @foreach ($areas as $area)
                                 <option value="{{ $area }}" @selected($dailyFilters['area'] === $area)>{{ \App\Support\OperationalLabels::get($area) }}</option>
@@ -67,7 +82,7 @@
 
                     <div class="w-full sm:w-72">
                         <label class="field-label block" for="daily-user">Usuario</label>
-                        <select id="daily-user" name="user_id" class="field mt-1.5 py-2.5">
+                        <select id="daily-user" name="user_id" class="field mt-1.5 py-2.5" x-on:change="submitNow()">
                             <option value="">Todos</option>
                             @foreach ($users->groupBy('area') as $area => $areaUsers)
                                 <optgroup label="{{ $area ? \App\Support\OperationalLabels::get($area) : 'Sin área' }}">
@@ -79,7 +94,9 @@
                         </select>
                     </div>
 
-                    <button class="button-primary h-12 w-full sm:w-auto">Aplicar</button>
+                    @if ($hasDailyFilters)
+                        <a href="{{ route('dashboard') }}" class="button-secondary h-12 w-full sm:w-auto">Limpiar</a>
+                    @endif
                 </form>
             </div>
 
