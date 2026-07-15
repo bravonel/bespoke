@@ -23,54 +23,6 @@ const openRequestedProjectModal = () => {
 };
 
 document.addEventListener('alpine:init', () => {
-    Alpine.data('projectClientBrandPicker', ({ initialClientId = '', initialBrandId = '', brands = [] } = {}) => ({
-        clientId: String(initialClientId ?? ''),
-        brandId: String(initialBrandId ?? ''),
-        brands: brands.map((brand) => ({
-            ...brand,
-            id: String(brand.id),
-            client_id: String(brand.client_id),
-        })),
-
-        init() {
-            this.ensureBrandBelongsToClient();
-
-            this.$watch('clientId', () => {
-                this.ensureBrandBelongsToClient();
-            });
-        },
-
-        get filteredBrands() {
-            if (!this.clientId) {
-                return [];
-            }
-
-            return this.brands.filter((brand) => brand.client_id === this.clientId);
-        },
-
-        get brandPlaceholder() {
-            if (!this.clientId) {
-                return 'Primero selecciona un cliente';
-            }
-
-            if (this.filteredBrands.length === 0) {
-                return 'Sin marcas para este cliente';
-            }
-
-            return 'Sin marca';
-        },
-
-        ensureBrandBelongsToClient() {
-            if (!this.brandId) {
-                return;
-            }
-
-            if (!this.filteredBrands.some((brand) => brand.id === this.brandId)) {
-                this.brandId = '';
-            }
-        },
-    }));
-
     Alpine.data('taskDrawer', () => ({
         isOpen: false,
         loading: false,

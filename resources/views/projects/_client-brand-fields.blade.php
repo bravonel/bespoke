@@ -14,11 +14,48 @@
 
 <div
     class="contents"
-    x-data="projectClientBrandPicker({
-        initialClientId: @js($selectedClientId),
-        initialBrandId: @js($selectedBrandId),
+    x-data="{
+        clientId: @js($selectedClientId),
+        brandId: @js($selectedBrandId),
         brands: @js($brandOptions),
-    })"
+        init() {
+            this.clientId = String(this.clientId ?? '');
+            this.brandId = String(this.brandId ?? '');
+            this.ensureBrandBelongsToClient();
+
+            this.$watch('clientId', () => {
+                this.clientId = String(this.clientId ?? '');
+                this.ensureBrandBelongsToClient();
+            });
+        },
+        get filteredBrands() {
+            if (!this.clientId) {
+                return [];
+            }
+
+            return this.brands.filter((brand) => String(brand.client_id) === this.clientId);
+        },
+        get brandPlaceholder() {
+            if (!this.clientId) {
+                return 'Primero selecciona un cliente';
+            }
+
+            if (this.filteredBrands.length === 0) {
+                return 'Sin marcas para este cliente';
+            }
+
+            return 'Sin marca';
+        },
+        ensureBrandBelongsToClient() {
+            if (!this.brandId) {
+                return;
+            }
+
+            if (!this.filteredBrands.some((brand) => String(brand.id) === this.brandId)) {
+                this.brandId = '';
+            }
+        },
+    }"
     x-init="init()"
 >
     <div>
