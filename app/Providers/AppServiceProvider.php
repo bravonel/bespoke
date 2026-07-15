@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 use App\Services\AI\AiProvider;
+use App\Services\AI\AiSpeechProvider;
 use App\Services\AI\OpenAiProvider;
+use App\Services\AI\OpenAiSpeechProvider;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\ServiceProvider;
@@ -16,6 +18,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(AiProvider::class, OpenAiProvider::class);
+        $this->app->bind(AiSpeechProvider::class, OpenAiSpeechProvider::class);
     }
 
     /**

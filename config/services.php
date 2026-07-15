@@ -52,6 +52,8 @@ return [
         'api_key' => env('OPENAI_API_KEY') ?: $localEnvValue('OPENAI_API_KEY'),
         'base_url' => env('OPENAI_BASE_URL', 'https://api.openai.com/v1'),
         'model' => env('OPENAI_MODEL', 'gpt-5.6'),
+        'tts_model' => env('OPENAI_TTS_MODEL', 'gpt-4o-mini-tts'),
+        'tts_voice' => env('OPENAI_TTS_VOICE', 'coral'),
     ],
 
     'ses' => [

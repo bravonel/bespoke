@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AiAssistantController;
+use App\Http\Controllers\AiSpeechController;
 use App\Http\Controllers\BrandController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\CollaboratorController;
@@ -19,6 +20,7 @@ Route::middleware(['auth', TrackUserActivity::class])->group(function (): void {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
     Route::get('profile', fn () => view('profile'))->name('profile');
     Route::post('ai/assistant', AiAssistantController::class)->name('ai.assistant');
+    Route::post('ai/assistant/speech', AiSpeechController::class)->name('ai.assistant.speech');
 
     Route::get('my-tasks', MyTasksController::class)->name('tasks.mine');
 

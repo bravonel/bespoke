@@ -98,12 +98,55 @@
                     x-data="{
                         open: false,
                         loading: false,
+                        listening: false,
+                        voiceSupported: false,
+                        speechLoading: false,
+                        audioEnabled: true,
                         message: '',
                         error: '',
                         messages: [],
+                        recognition: null,
+                        audioPlayer: null,
                         endpoint: @js(route('ai.assistant')),
+                        speechEndpoint: @js(route('ai.assistant.speech')),
                         contextType: @js($assistantContextId ? 'project' : null),
                         contextId: @js($assistantContextId),
+                        init() {
+                            const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                            this.voiceSupported = Boolean(Recognition);
+
+                            if (!this.voiceSupported) return;
+
+                            this.recognition = new Recognition();
+                            this.recognition.lang = 'es-MX';
+                            this.recognition.continuous = false;
+                            this.recognition.interimResults = false;
+
+                            this.recognition.onstart = () => {
+                                this.listening = true;
+                                this.error = '';
+                            };
+                            this.recognition.onend = () => {
+                                this.listening = false;
+                            };
+                            this.recognition.onerror = (event) => {
+                                this.listening = false;
+                                this.error = event.error === 'not-allowed'
+                                    ? 'Activa el permiso del micrófono para dictar.'
+                                    : 'No se pudo tomar audio del micrófono.';
+                            };
+                            this.recognition.onresult = (event) => {
+                                const transcript = Array.from(event.results)
+                                    .map((result) => result[0]?.transcript || '')
+                                    .join(' ')
+                                    .trim();
+
+                                if (transcript) {
+                                    this.message = [this.message.trim(), transcript].filter(Boolean).join(' ');
+                                    this.$nextTick(() => this.$refs.input?.focus());
+                                }
+                            };
+                        },
                         toggle() {
                             this.open = !this.open;
                             if (this.open) this.$nextTick(() => this.$refs.input?.focus());
@@ -153,11 +196,71 @@
                                     text: data.answer || 'Sin respuesta.',
                                     sources: data.sources || [],
                                 });
+                                if (this.audioEnabled) {
+                                    this.playAnswer(data.answer || '');
+                                }
                                 this.scrollToBottom();
                             } catch (error) {
                                 this.error = error.message || 'No se pudo generar la respuesta.';
                             } finally {
                                 this.loading = false;
+                            }
+                        },
+                        toggleListening() {
+                            if (!this.voiceSupported || !this.recognition) {
+                                this.error = 'Tu navegador no permite dictado por voz.';
+                                return;
+                            }
+
+                            if (this.listening) {
+                                this.recognition.stop();
+                                return;
+                            }
+
+                            try {
+                                this.error = '';
+                                this.recognition.start();
+                            } catch (error) {
+                                this.error = 'No se pudo iniciar el micrófono.';
+                            }
+                        },
+                        async playAnswer(text) {
+                            const spokenText = String(text || '').trim();
+                            if (!spokenText || this.speechLoading) return;
+
+                            this.speechLoading = true;
+                            this.error = '';
+
+                            try {
+                                const response = await fetch(this.speechEndpoint, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Accept': 'audio/mpeg',
+                                        'Content-Type': 'application/json',
+                                        'X-CSRF-TOKEN': document.querySelector('meta[name=&quot;csrf-token&quot;]')?.content || '',
+                                    },
+                                    body: JSON.stringify({ text: spokenText }),
+                                });
+
+                                if (!response.ok) {
+                                    const message = await response.text();
+                                    throw new Error(message || 'No se pudo generar el audio.');
+                                }
+
+                                const audioUrl = URL.createObjectURL(await response.blob());
+
+                                if (this.audioPlayer) {
+                                    this.audioPlayer.pause();
+                                    URL.revokeObjectURL(this.audioPlayer.src);
+                                }
+
+                                this.audioPlayer = new Audio(audioUrl);
+                                this.audioPlayer.onended = () => URL.revokeObjectURL(audioUrl);
+                                await this.audioPlayer.play();
+                            } catch (error) {
+                                this.error = error.message || 'No se pudo reproducir el audio.';
+                            } finally {
+                                this.speechLoading = false;
                             }
                         },
                     }"
@@ -185,7 +288,12 @@
                                 <p class="text-xs font-semibold uppercase tracking-[0.18em]" style="color:var(--brand-amber)">Bespoke IA</p>
                                 <h2 class="mt-1 text-lg font-semibold text-slate-950">Asistente operativo</h2>
                             </div>
-                            <button type="button" x-on:click="open = false" class="button-secondary px-3 py-1.5 text-xs">Cerrar</button>
+                            <div class="flex items-center gap-2">
+                                <button type="button" x-on:click="audioEnabled = !audioEnabled" class="button-secondary px-3 py-1.5 text-xs">
+                                    <span x-text="audioEnabled ? 'Audio activo' : 'Audio apagado'"></span>
+                                </button>
+                                <button type="button" x-on:click="open = false" class="button-secondary px-3 py-1.5 text-xs">Cerrar</button>
+                            </div>
                         </div>
 
                         <div x-ref="scroller" class="flex-1 space-y-4 overflow-y-auto px-5 py-4">
@@ -206,7 +314,15 @@
                                         <p class="whitespace-pre-line" x-text="item.text"></p>
                                     </div>
 
-                                    <div x-show="item.sources && item.sources.length" class="mt-2 flex flex-wrap gap-2">
+                                    <div x-show="item.role === 'assistant' || (item.sources && item.sources.length)" class="mt-2 flex flex-wrap gap-2">
+                                        <button
+                                            type="button"
+                                            x-show="item.role === 'assistant'"
+                                            x-on:click="playAnswer(item.text)"
+                                            class="rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 transition hover:border-stone-300 hover:text-slate-900"
+                                        >
+                                            Escuchar
+                                        </button>
                                         <template x-for="source in item.sources" :key="source.url">
                                             <a
                                                 class="rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 transition hover:border-stone-300 hover:text-slate-900"
@@ -221,21 +337,39 @@
                             <div x-show="loading" class="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-slate-500" style="display:none">
                                 Analizando contexto operativo...
                             </div>
+                            <div x-show="speechLoading" class="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-slate-500" style="display:none">
+                                Generando audio...
+                            </div>
                         </div>
 
                         <form x-on:submit.prevent="send()" class="border-t border-stone-200 p-4">
                             <div x-show="error" class="mb-3 rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700" style="display:none" x-text="error"></div>
 
                             <label class="field-label sr-only" for="ai-assistant-message">Pregunta para el asistente</label>
-                            <textarea
-                                id="ai-assistant-message"
-                                x-ref="input"
-                                x-model="message"
-                                rows="3"
-                                class="field mt-0 resize-none"
-                                placeholder="Pregunta por riesgos, cargas, vencimientos o prioridades..."
-                                x-on:keydown.enter.prevent="if (!$event.shiftKey) send(); else message += '\n'"
-                            ></textarea>
+                            <div class="flex items-stretch gap-2">
+                                <textarea
+                                    id="ai-assistant-message"
+                                    x-ref="input"
+                                    x-model="message"
+                                    rows="3"
+                                    class="field mt-0 resize-none"
+                                    placeholder="Pregunta por riesgos, cargas, vencimientos o prioridades..."
+                                    x-on:keydown.enter.prevent="if (!$event.shiftKey) send(); else message += '\n'"
+                                ></textarea>
+                                <button
+                                    type="button"
+                                    x-on:click="toggleListening()"
+                                    class="button-secondary shrink-0 px-3"
+                                    :class="listening ? 'border-rose-200 bg-rose-50 text-rose-700' : ''"
+                                    :disabled="!voiceSupported"
+                                >
+                                    <span x-text="listening ? 'Detener' : 'Micrófono'"></span>
+                                </button>
+                            </div>
+
+                            <p x-show="!voiceSupported" class="mt-2 text-xs text-slate-500" style="display:none">
+                                Dictado no disponible en este navegador.
+                            </p>
 
                             <div class="mt-3 flex items-center justify-between gap-3">
                                 <p class="text-xs text-slate-500">Consulta datos de Bespoke OS.</p>

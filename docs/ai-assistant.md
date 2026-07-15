@@ -8,6 +8,8 @@ El asistente IA queda integrado como un módulo de consulta operativa. En esta p
 OPENAI_API_KEY=
 OPENAI_BASE_URL=https://api.openai.com/v1
 OPENAI_MODEL=gpt-5.6
+OPENAI_TTS_MODEL=gpt-4o-mini-tts
+OPENAI_TTS_VOICE=coral
 ```
 
 En local la llave puede vivir en `.env.local`; el sistema la lee como fallback si no existe `OPENAI_API_KEY` en el entorno normal. En producción debe configurarse en el `.env` del release activo o del entorno que use cPanel.
@@ -19,6 +21,14 @@ En local la llave puede vivir en `.env.local`; el sistema la lee como fallback s
 3. `AiAssistant` registra auditoría en `ai_assistant_messages`.
 4. `OpenAiProvider` llama al endpoint `responses` de OpenAI.
 5. La respuesta vuelve al panel con fuentes internas como dashboard, proyectos y tareas.
+6. Si el usuario activa audio, `POST /ai/assistant/speech` genera un MP3 con voz de OpenAI desde el backend.
+
+## Voz
+
+- El botón **Micrófono** usa dictado del navegador para llenar el mismo campo de texto.
+- El textarea se mantiene para escribir manualmente.
+- El botón **Escuchar** y el modo **Audio activo** usan OpenAI Text to Speech desde el servidor.
+- La API key nunca se envía al navegador.
 
 ## Límites intencionales de la fase 1
 
