@@ -7,7 +7,7 @@
                 <p class="mt-2 max-w-2xl text-sm text-slate-600">Da de alta laboratorios y cuentas para que proyectos, marcas y revisiones nazcan con contexto claro.</p>
             </div>
 
-            <button type="button" x-on:click="$dispatch('open-modal', 'create-client')" class="button-primary shrink-0">
+            <button type="button" data-open-modal="create-client" class="button-primary shrink-0">
                 + Nuevo cliente
             </button>
         </div>
@@ -92,7 +92,7 @@
                                 <div class="flex items-center gap-2">
                                     <button
                                         type="button"
-                                        x-on:click="$dispatch('open-modal', 'edit-client-{{ $client->id }}')"
+                                        data-open-modal="edit-client-{{ $client->id }}"
                                         class="button-secondary py-1.5 text-xs"
                                     >Editar</button>
 

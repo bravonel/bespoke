@@ -8,7 +8,7 @@
             </div>
 
             @if ($clients->isNotEmpty())
-                <button type="button" x-on:click="$dispatch('open-modal', 'create-brand')" class="button-primary shrink-0">
+                <button type="button" data-open-modal="create-brand" class="button-primary shrink-0">
                     + Nueva marca
                 </button>
             @endif
@@ -103,7 +103,7 @@
                                 <div class="flex items-center gap-2">
                                     <button
                                         type="button"
-                                        x-on:click="$dispatch('open-modal', 'edit-brand-{{ $brand->id }}')"
+                                        data-open-modal="edit-brand-{{ $brand->id }}"
                                         class="button-secondary py-1.5 text-xs"
                                     >Editar</button>
 

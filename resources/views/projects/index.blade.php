@@ -9,7 +9,7 @@
 
             <button
                 type="button"
-                x-on:click="$dispatch('open-modal', 'create-project')"
+                data-open-modal="create-project"
                 class="button-primary"
             >
                 Nuevo proyecto
