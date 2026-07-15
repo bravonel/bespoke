@@ -359,11 +359,19 @@
                                 <button
                                     type="button"
                                     x-on:click="toggleListening()"
-                                    class="button-secondary shrink-0 px-3"
+                                    class="button-secondary shrink-0 justify-center px-0 w-12"
                                     :class="listening ? 'border-rose-200 bg-rose-50 text-rose-700' : ''"
                                     :disabled="!voiceSupported"
+                                    :aria-label="listening ? 'Detener dictado' : 'Activar micrófono'"
+                                    :title="listening ? 'Detener dictado' : 'Activar micrófono'"
                                 >
-                                    <span x-text="listening ? 'Detener' : 'Micrófono'"></span>
+                                    <svg x-show="!listening" class="h-5 w-5" style="display:none" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-12 0v1.5a6 6 0 0 0 6 6Zm0 0v3.75m-3.75 0h7.5M12 15a3 3 0 0 1-3-3V5.25a3 3 0 1 1 6 0V12a3 3 0 0 1-3 3Z" />
+                                    </svg>
+                                    <svg x-show="listening" class="h-5 w-5" style="display:none" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="M7.5 6.75A2.25 2.25 0 0 1 9.75 4.5h4.5a2.25 2.25 0 0 1 2.25 2.25v10.5a2.25 2.25 0 0 1-2.25 2.25h-4.5a2.25 2.25 0 0 1-2.25-2.25V6.75Z" />
+                                    </svg>
+                                    <span class="sr-only" x-text="listening ? 'Detener dictado' : 'Activar micrófono'"></span>
                                 </button>
                             </div>
 
