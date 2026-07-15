@@ -46,6 +46,10 @@ new class extends Component
                         {{ __('Proyectos') }}
                     </x-nav-link>
 
+                    <x-nav-link :href="route('collaborators.index')" :active="request()->routeIs('collaborators.*')" wire:navigate>
+                        {{ __('Colaboradores') }}
+                    </x-nav-link>
+
                     <x-nav-link :href="route('tasks.mine')" :active="request()->routeIs('tasks.mine')" wire:navigate>
                         {{ __('Mis tareas') }}
                     </x-nav-link>
@@ -111,6 +115,10 @@ new class extends Component
 
             <x-responsive-nav-link :href="route('projects.index')" :active="request()->routeIs('projects.*')" wire:navigate>
                 {{ __('Proyectos') }}
+            </x-responsive-nav-link>
+
+            <x-responsive-nav-link :href="route('collaborators.index')" :active="request()->routeIs('collaborators.*')" wire:navigate>
+                {{ __('Colaboradores') }}
             </x-responsive-nav-link>
 
             <x-responsive-nav-link :href="route('tasks.mine')" :active="request()->routeIs('tasks.mine')" wire:navigate>

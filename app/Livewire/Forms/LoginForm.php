@@ -38,6 +38,15 @@ class LoginForm extends Form
             ]);
         }
 
+        if (! Auth::user()?->isActiveForAccess()) {
+            Auth::logout();
+            RateLimiter::hit($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'form.email' => 'Esta cuenta está inactiva. Pide a administración que la reactive.',
+            ]);
+        }
+
         Auth::user()?->forceFill([
             'last_login_at' => now(),
             'last_seen_at' => now(),

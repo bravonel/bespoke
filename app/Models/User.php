@@ -6,12 +6,13 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'area', 'puesto', 'daily_capacity_minutes', 'last_login_at', 'last_seen_at'])]
+#[Fillable(['name', 'email', 'email_verified_at', 'password', 'area', 'puesto', 'daily_capacity_minutes', 'is_active', 'last_login_at', 'last_seen_at'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -29,9 +30,30 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'daily_capacity_minutes' => 'integer',
+            'is_active' => 'boolean',
             'last_login_at' => 'datetime',
             'last_seen_at' => 'datetime',
         ];
+    }
+
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->where('is_active', true);
+    }
+
+    public function scopeInactive(Builder $query): Builder
+    {
+        return $query->where('is_active', false);
+    }
+
+    public function statusLabel(): string
+    {
+        return $this->isActiveForAccess() ? 'Activo' : 'Inactivo';
+    }
+
+    public function isActiveForAccess(): bool
+    {
+        return $this->is_active !== false;
     }
 
     public function dailyCapacityHours(): float

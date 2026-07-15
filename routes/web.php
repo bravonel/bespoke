@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\BrandController;
 use App\Http\Controllers\ClientController;
+use App\Http\Controllers\CollaboratorController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MyTasksController;
 use App\Http\Controllers\ProjectController;
@@ -20,6 +21,12 @@ Route::middleware(['auth', TrackUserActivity::class])->group(function (): void {
     Route::get('my-tasks', MyTasksController::class)->name('tasks.mine');
 
     Route::patch('users/{user}/capacity', [UserCapacityController::class, 'update'])->name('users.capacity.update');
+
+    Route::get('collaborators', [CollaboratorController::class, 'index'])->name('collaborators.index');
+    Route::post('collaborators', [CollaboratorController::class, 'store'])->name('collaborators.store');
+    Route::patch('collaborators/{collaborator}', [CollaboratorController::class, 'update'])->name('collaborators.update');
+    Route::patch('collaborators/{collaborator}/deactivate', [CollaboratorController::class, 'deactivate'])->name('collaborators.deactivate');
+    Route::patch('collaborators/{collaborator}/activate', [CollaboratorController::class, 'activate'])->name('collaborators.activate');
 
     Route::get('clients', [ClientController::class, 'index'])->name('clients.index');
     Route::post('clients', [ClientController::class, 'store'])->name('clients.store');

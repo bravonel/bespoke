@@ -51,7 +51,7 @@ class ProjectController extends Controller
                 ->withQueryString(),
             'clients' => Client::query()->orderBy('name')->get(),
             'brands' => Brand::query()->with('client')->orderBy('name')->get(),
-            'owners' => User::query()->orderBy('name')->get(),
+            'owners' => User::query()->active()->orderBy('name')->get(),
             'statuses' => Project::statusOptions(),
             'priorities' => Project::priorityOptions(),
             'stages' => Project::stageOptions(),
@@ -67,7 +67,7 @@ class ProjectController extends Controller
         return view('projects.create', [
             'clients' => Client::query()->orderBy('name')->get(),
             'brands' => Brand::query()->with('client')->orderBy('name')->get(),
-            'owners' => User::query()->orderBy('name')->get(),
+            'owners' => User::query()->active()->orderBy('name')->get(),
             'statuses' => Project::statusOptions(),
             'priorities' => Project::priorityOptions(),
             'stages' => Project::stageOptions(),
@@ -221,7 +221,7 @@ class ProjectController extends Controller
 
         return view('projects.show', [
             'project' => $project,
-            'users' => User::query()->orderBy('name')->get(),
+            'users' => $this->usersAvailableForProject($project),
             'clients' => Client::query()->orderBy('name')->get(),
             'brands' => Brand::query()->with('client')->orderBy('name')->get(),
             'taskGroups' => $taskGroups,
@@ -306,6 +306,25 @@ class ProjectController extends Controller
                 ['missing_estimates', 'desc'],
             ])
             ->values();
+    }
+
+    private function usersAvailableForProject(Project $project): Collection
+    {
+        $relatedUserIds = collect([$project->owner_id])
+            ->concat($project->tasks->pluck('assigned_to'))
+            ->concat($project->workloads->pluck('user_id'))
+            ->filter()
+            ->unique()
+            ->values();
+
+        return User::query()
+            ->where('is_active', true)
+            ->when(
+                $relatedUserIds->isNotEmpty(),
+                fn ($query) => $query->orWhereIn('id', $relatedUserIds)
+            )
+            ->orderBy('name')
+            ->get();
     }
 
     private function syncWorkloads(Project $project, array $workloads): void

@@ -159,9 +159,10 @@ class DashboardController extends Controller
             'projectsDueSoon' => $projectsDueSoon,
             'recentTasks' => $recentTasks,
             'selectedDate' => $selectedDate,
-            'areas' => User::query()->whereNotNull('area')->distinct()->orderBy('area')->pluck('area'),
-            'users' => User::query()->orderBy('name')->get(),
+            'areas' => User::query()->active()->whereNotNull('area')->distinct()->orderBy('area')->pluck('area'),
+            'users' => User::query()->active()->orderBy('name')->get(),
             'activeUsers' => User::query()
+                ->active()
                 ->orderByRaw('last_seen_at is null')
                 ->orderByDesc('last_seen_at')
                 ->orderBy('name')

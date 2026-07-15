@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Project;
 use App\Models\Task;
+use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -34,7 +35,14 @@ class TaskController extends Controller
             'taskStatusMeta' => Task::statusMeta(),
             'taskPriorities' => Task::priorityOptions(),
             'taskPriorityMeta' => Task::priorityMeta(),
-            'users' => \App\Models\User::query()->orderBy('name')->get(),
+            'users' => User::query()
+                ->where('is_active', true)
+                ->when(
+                    $task->assigned_to,
+                    fn ($query) => $query->orWhere('id', $task->assigned_to)
+                )
+                ->orderBy('name')
+                ->get(),
         ];
 
         if ($request->hasHeader('X-Drawer')) {

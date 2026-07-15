@@ -57,6 +57,7 @@ final class OperationalLabels
             'in_progress' => 'En proceso',
             'in_review' => 'En revisión',
             'Innovation Manager' => 'Gerente de innovación',
+            'inactive' => 'Inactivo',
             'low' => 'Baja',
             'material' => 'Material',
             'Médico' => 'Médico',
