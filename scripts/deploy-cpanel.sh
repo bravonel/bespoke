@@ -72,6 +72,30 @@ if [ -d "${TARGET_DIR}/public/assets" ]; then
     rsync -a --delete "${TARGET_DIR}/public/assets/" "${PUBLIC_DIR}/assets/"
 fi
 
+cat > "${PUBLIC_DIR}/index.php" <<PHP
+<?php
+
+use Illuminate\Foundation\Application;
+use Illuminate\Http\Request;
+
+define('LARAVEL_START', microtime(true));
+
+\$appPath = '${TARGET_DIR}';
+
+if (file_exists(\$maintenance = \$appPath.'/storage/framework/maintenance.php')) {
+    require \$maintenance;
+}
+
+require \$appPath.'/vendor/autoload.php';
+
+/** @var Application \$app */
+\$app = require_once \$appPath.'/bootstrap/app.php';
+
+\$app->handleRequest(Request::capture());
+PHP
+
+cp "${TARGET_DIR}/public/.htaccess" "${PUBLIC_DIR}/.htaccess"
+
 php artisan migrate --force
 php artisan optimize:clear
 php artisan config:cache

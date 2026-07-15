@@ -30,6 +30,7 @@ El script:
 - instala dependencias PHP;
 - reconstruye assets de Vite cuando `npm` está disponible;
 - copia `public/build` y `public/assets` hacia `public_html` para que el dominio sirva el CSS/JS correcto;
+- reescribe `public_html/index.php` y `public_html/.htaccess` para que el dominio siempre cargue la app desde `/home/bespokea/apps/bespoke-os`;
 - corre migraciones;
 - limpia y recompila caches de Laravel.
 
