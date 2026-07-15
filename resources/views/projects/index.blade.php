@@ -26,23 +26,28 @@
             class="flex flex-wrap items-end gap-3"
             x-data="{
                 timer: null,
-                submitSoon() {
-                    clearTimeout(this.timer);
-                    this.timer = setTimeout(() => this.$el.requestSubmit(), 450);
+                submitForm(form) {
+                    if (!form) return;
+                    if (typeof form.requestSubmit === 'function') {
+                        form.requestSubmit();
+                        return;
+                    }
+                    form.submit();
                 },
-                submitNow() {
-                    this.$el.requestSubmit();
+                submitSoon(form) {
+                    clearTimeout(this.timer);
+                    this.timer = setTimeout(() => this.submitForm(form), 450);
                 },
             }"
         >
             <div class="min-w-[12rem] flex-1">
                 <label class="field-label" for="f-q">Buscar</label>
-                <input id="f-q" type="text" name="q" class="field mt-0" placeholder="Nombre, ODT o código…" value="{{ $filters['q'] ?? '' }}" x-on:input="submitSoon()">
+                <input id="f-q" type="text" name="q" class="field mt-0" placeholder="Nombre, ODT o código…" value="{{ $filters['q'] ?? '' }}" x-on:input="submitSoon($el.form)">
             </div>
 
             <div class="min-w-[10rem]">
                 <label class="field-label" for="f-client">Cliente</label>
-                <select id="f-client" name="client_id" class="field mt-0" x-on:change="submitNow()">
+                <select id="f-client" name="client_id" class="field mt-0" x-on:change="submitForm($el.form)">
                     <option value="">Todos los clientes</option>
                     @foreach ($clients as $client)
                         <option value="{{ $client->id }}" @selected(($filters['client_id'] ?? '') == $client->id)>{{ $client->name }}</option>
@@ -52,7 +57,7 @@
 
             <div class="min-w-[9rem]">
                 <label class="field-label" for="f-status">Estatus</label>
-                <select id="f-status" name="status" class="field mt-0" x-on:change="submitNow()">
+                <select id="f-status" name="status" class="field mt-0" x-on:change="submitForm($el.form)">
                     <option value="">Todos</option>
                     @foreach ($statuses as $status)
                         <option value="{{ $status }}" @selected(($filters['status'] ?? '') === $status)>{{ \App\Support\OperationalLabels::get($status) }}</option>
@@ -62,7 +67,7 @@
 
             <div class="min-w-[9rem]">
                 <label class="field-label" for="f-stage">Etapa</label>
-                <select id="f-stage" name="stage" class="field mt-0" x-on:change="submitNow()">
+                <select id="f-stage" name="stage" class="field mt-0" x-on:change="submitForm($el.form)">
                     <option value="">Todas</option>
                     @foreach ($stages as $stage)
                         <option value="{{ $stage }}" @selected(($filters['stage'] ?? '') === $stage)>{{ \App\Support\OperationalLabels::get($stage) }}</option>

@@ -20,23 +20,28 @@
             class="flex flex-wrap items-end gap-3"
             x-data="{
                 timer: null,
-                submitSoon() {
-                    clearTimeout(this.timer);
-                    this.timer = setTimeout(() => this.$el.requestSubmit(), 450);
+                submitForm(form) {
+                    if (!form) return;
+                    if (typeof form.requestSubmit === 'function') {
+                        form.requestSubmit();
+                        return;
+                    }
+                    form.submit();
                 },
-                submitNow() {
-                    this.$el.requestSubmit();
+                submitSoon(form) {
+                    clearTimeout(this.timer);
+                    this.timer = setTimeout(() => this.submitForm(form), 450);
                 },
             }"
         >
             <div class="min-w-[13rem] flex-1">
                 <label class="field-label" for="f-q">Buscar</label>
-                <input id="f-q" type="text" name="q" class="field mt-0" placeholder="Cliente, contacto o correo…" value="{{ $filters['q'] ?? '' }}" x-on:input="submitSoon()">
+                <input id="f-q" type="text" name="q" class="field mt-0" placeholder="Cliente, contacto o correo…" value="{{ $filters['q'] ?? '' }}" x-on:input="submitSoon($el.form)">
             </div>
 
             <div class="min-w-[9rem]">
                 <label class="field-label" for="f-status">Estatus</label>
-                <select id="f-status" name="status" class="field mt-0" x-on:change="submitNow()">
+                <select id="f-status" name="status" class="field mt-0" x-on:change="submitForm($el.form)">
                     <option value="">Todos</option>
                     @foreach ($statuses as $status)
                         <option value="{{ $status }}" @selected(($filters['status'] ?? '') === $status)>{{ \App\Support\OperationalLabels::get($status) }}</option>
