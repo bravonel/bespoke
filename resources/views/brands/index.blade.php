@@ -15,12 +15,46 @@
         </div>
     </x-slot>
 
-    <div class="shell">
+    <div class="shell space-y-5">
         @if ($clients->isEmpty())
             <div class="panel border border-amber-200 bg-amber-50/90 px-6 py-5 text-sm text-amber-800 mb-6">
                 Primero crea al menos un cliente para poder registrar marcas.
             </div>
         @endif
+
+        <form method="GET" action="{{ route('brands.index') }}" class="flex flex-wrap items-end gap-3">
+            <div class="min-w-[13rem] flex-1">
+                <label class="field-label" for="f-q">Buscar</label>
+                <input id="f-q" type="text" name="q" class="field mt-0" placeholder="Marca, cliente o área…" value="{{ $filters['q'] ?? '' }}">
+            </div>
+
+            <div class="min-w-[12rem]">
+                <label class="field-label" for="f-client">Cliente</label>
+                <select id="f-client" name="client_id" class="field mt-0">
+                    <option value="">Todos los clientes</option>
+                    @foreach ($clients as $client)
+                        <option value="{{ $client->id }}" @selected(($filters['client_id'] ?? '') == $client->id)>{{ $client->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="min-w-[9rem]">
+                <label class="field-label" for="f-status">Estatus</label>
+                <select id="f-status" name="status" class="field mt-0">
+                    <option value="">Todos</option>
+                    @foreach ($statuses as $status)
+                        <option value="{{ $status }}" @selected(($filters['status'] ?? '') === $status)>{{ \App\Support\OperationalLabels::get($status) }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="flex gap-2">
+                <button type="submit" class="button-primary">Filtrar</button>
+                @if (array_filter($filters))
+                    <a href="{{ route('brands.index') }}" class="button-secondary">Limpiar</a>
+                @endif
+            </div>
+        </form>
 
         <div class="table-wrap">
             <table class="table">
@@ -69,12 +103,24 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-4 py-8 text-center text-slate-500">Aún no hay marcas registradas.</td>
+                            <td colspan="6" class="px-4 py-8 text-center text-slate-500">
+                                @if (array_filter($filters))
+                                    Ninguna marca coincide con los filtros actuales.
+                                @else
+                                    Aún no hay marcas registradas.
+                                @endif
+                            </td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
+
+        @if ($brands->hasPages())
+            <div>
+                {{ $brands->links() }}
+            </div>
+        @endif
     </div>
 
     {{-- Modales de edición — FUERA de la tabla --}}

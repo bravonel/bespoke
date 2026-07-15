@@ -117,6 +117,12 @@
                 </tbody>
             </table>
         </div>
+
+        @if ($projects->hasPages())
+            <div>
+                {{ $projects->links() }}
+            </div>
+        @endif
     </div>
 
     {{-- Crear proyecto modal --}}

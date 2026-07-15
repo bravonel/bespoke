@@ -13,7 +13,31 @@
         </div>
     </x-slot>
 
-    <div class="shell">
+    <div class="shell space-y-5">
+        <form method="GET" action="{{ route('clients.index') }}" class="flex flex-wrap items-end gap-3">
+            <div class="min-w-[13rem] flex-1">
+                <label class="field-label" for="f-q">Buscar</label>
+                <input id="f-q" type="text" name="q" class="field mt-0" placeholder="Cliente, contacto o correo…" value="{{ $filters['q'] ?? '' }}">
+            </div>
+
+            <div class="min-w-[9rem]">
+                <label class="field-label" for="f-status">Estatus</label>
+                <select id="f-status" name="status" class="field mt-0">
+                    <option value="">Todos</option>
+                    @foreach ($statuses as $status)
+                        <option value="{{ $status }}" @selected(($filters['status'] ?? '') === $status)>{{ \App\Support\OperationalLabels::get($status) }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="flex gap-2">
+                <button type="submit" class="button-primary">Filtrar</button>
+                @if (array_filter($filters))
+                    <a href="{{ route('clients.index') }}" class="button-secondary">Limpiar</a>
+                @endif
+            </div>
+        </form>
+
         <div class="table-wrap">
             <table class="table">
                 <thead>
@@ -68,12 +92,24 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-4 py-8 text-center text-slate-500">Aún no hay clientes registrados.</td>
+                            <td colspan="7" class="px-4 py-8 text-center text-slate-500">
+                                @if (array_filter($filters))
+                                    Ningún cliente coincide con los filtros actuales.
+                                @else
+                                    Aún no hay clientes registrados.
+                                @endif
+                            </td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
+
+        @if ($clients->hasPages())
+            <div>
+                {{ $clients->links() }}
+            </div>
+        @endif
     </div>
 
     {{-- Modales de edición — FUERA de la tabla para que Alpine los inicialice correctamente --}}

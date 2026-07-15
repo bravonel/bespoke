@@ -11,16 +11,50 @@ use Illuminate\Validation\Rule;
 
 class BrandController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
+        $filters = [
+            'q' => trim($request->string('q')->toString()),
+            'client_id' => $request->integer('client_id') ?: '',
+            'status' => $request->string('status')->toString(),
+        ];
+
+        if (! in_array($filters['status'], Brand::statusOptions(), true)) {
+            $filters['status'] = '';
+        }
+
+        $query = Brand::query()
+            ->with(['client'])
+            ->withCount('projects');
+
+        if ($filters['q'] !== '') {
+            $search = $filters['q'];
+
+            $query->where(function ($subquery) use ($search) {
+                $subquery
+                    ->where('name', 'like', "%{$search}%")
+                    ->orWhere('therapeutic_area', 'like', "%{$search}%")
+                    ->orWhere('notes', 'like', "%{$search}%")
+                    ->orWhereHas('client', fn ($clientQuery) => $clientQuery->where('name', 'like', "%{$search}%"));
+            });
+        }
+
+        if ($filters['client_id'] !== '') {
+            $query->where('client_id', $filters['client_id']);
+        }
+
+        if ($filters['status'] !== '') {
+            $query->where('status', $filters['status']);
+        }
+
         return view('brands.index', [
-            'brands' => Brand::query()
-                ->with(['client'])
-                ->withCount('projects')
-                ->latest()
-                ->get(),
+            'brands' => $query
+                ->orderBy('name')
+                ->paginate(20)
+                ->withQueryString(),
             'clients' => Client::query()->orderBy('name')->get(),
             'statuses' => Brand::statusOptions(),
+            'filters' => $filters,
         ]);
     }
 

@@ -10,14 +10,44 @@ use Illuminate\Validation\Rule;
 
 class ClientController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
+        $filters = [
+            'q' => trim($request->string('q')->toString()),
+            'status' => $request->string('status')->toString(),
+        ];
+
+        if (! in_array($filters['status'], Client::statusOptions(), true)) {
+            $filters['status'] = '';
+        }
+
+        $query = Client::query()
+            ->withCount(['brands', 'projects']);
+
+        if ($filters['q'] !== '') {
+            $search = $filters['q'];
+
+            $query->where(function ($subquery) use ($search) {
+                $subquery
+                    ->where('name', 'like', "%{$search}%")
+                    ->orWhere('primary_contact_name', 'like', "%{$search}%")
+                    ->orWhere('primary_contact_email', 'like', "%{$search}%")
+                    ->orWhere('primary_contact_phone', 'like', "%{$search}%")
+                    ->orWhere('notes', 'like', "%{$search}%");
+            });
+        }
+
+        if ($filters['status'] !== '') {
+            $query->where('status', $filters['status']);
+        }
+
         return view('clients.index', [
-            'clients' => Client::query()
-                ->withCount(['brands', 'projects'])
-                ->latest()
-                ->get(),
+            'clients' => $query
+                ->orderBy('name')
+                ->paginate(20)
+                ->withQueryString(),
             'statuses' => Client::statusOptions(),
+            'filters' => $filters,
         ]);
     }
 

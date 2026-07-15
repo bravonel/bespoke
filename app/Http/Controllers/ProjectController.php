@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -44,7 +45,10 @@ class ProjectController extends Controller
         }
 
         return view('projects.index', [
-            'projects' => $query->latest()->get(),
+            'projects' => $query
+                ->latest()
+                ->paginate(20)
+                ->withQueryString(),
             'clients' => Client::query()->orderBy('name')->get(),
             'brands' => Brand::query()->with('client')->orderBy('name')->get(),
             'owners' => User::query()->orderBy('name')->get(),
@@ -248,7 +252,7 @@ class ProjectController extends Controller
         ]);
     }
 
-    private function collaboratorLoadRows(Project $project, array $workloadRoles): \Illuminate\Support\Collection
+    private function collaboratorLoadRows(Project $project, array $workloadRoles): Collection
     {
         $taskRows = $project->tasks
             ->where('status', '!=', 'done')
