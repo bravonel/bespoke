@@ -169,5 +169,8 @@
                 </div>
             </section>
         </div>
+        <div class="mt-6">
+            @include('activity._timeline', ['recentActivity' => $recentActivity])
+        </div>
     </div>
 </x-app-layout>

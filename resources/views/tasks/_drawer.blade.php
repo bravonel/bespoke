@@ -105,13 +105,13 @@
         <div class="mb-8">
             <div class="mb-3 flex items-center justify-between">
                 <h3 class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Lista</h3>
-                <span class="text-sm font-semibold text-slate-700">
+                <span class="text-sm font-semibold text-slate-700" data-drawer-progress-count>
                     {{ $task->completed_subtasks_count }}/{{ $task->subtasks_count }}
                 </span>
             </div>
 
             <div class="progress-track mt-0 mb-4">
-                <span class="progress-fill" style="width: {{ $subtaskProgress }}%"></span>
+                <span class="progress-fill" data-drawer-progress-bar style="width: {{ $subtaskProgress }}%"></span>
             </div>
 
             <div class="space-y-2">
@@ -119,6 +119,8 @@
                     <form
                         method="POST"
                         action="{{ route('subtasks.update', $subtask) }}"
+                        data-drawer-subtask-form
+                        data-subtask-id="{{ $subtask->id }}"
                         class="flex items-center gap-3 rounded-2xl border border-stone-200 bg-white px-4 py-3"
                     >
                         @csrf
@@ -126,9 +128,11 @@
                         <input type="hidden" name="is_done" value="{{ $subtask->is_done ? 0 : 1 }}">
                         <button
                             type="submit"
+                            data-subtask-toggle
+                            aria-label="{{ $subtask->is_done ? 'Marcar como pendiente' : 'Marcar como lista' }}"
                             class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold {{ $subtask->is_done ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-stone-300 bg-white text-transparent' }}"
                         >✓</button>
-                        <span class="text-sm {{ $subtask->is_done ? 'text-slate-400 line-through' : 'text-slate-700' }}">
+                        <span data-subtask-title class="text-sm {{ $subtask->is_done ? 'text-slate-400 line-through' : 'text-slate-700' }}">
                             {{ $subtask->title }}
                         </span>
                     </form>
@@ -138,6 +142,8 @@
                     </div>
                 @endforelse
             </div>
+
+            <p class="mt-3 hidden text-sm font-medium text-rose-700" role="alert" data-drawer-checklist-error></p>
 
             <form method="POST" action="{{ route('tasks.subtasks.store', $task) }}" class="mt-3 flex gap-2">
                 @csrf
@@ -227,6 +233,9 @@
                 >Cancelar</button>
             </div>
         </form>
+    </div>
+    <div class="mt-6">
+        @include('activity._timeline', ['recentActivity' => $recentActivity])
     </div>
 </div>
 

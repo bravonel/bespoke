@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\ActivityController;
+use App\Http\Controllers\ActivityIngestionController;
 use App\Http\Controllers\AiAssistantController;
 use App\Http\Controllers\AiSpeechController;
 use App\Http\Controllers\BrandController;
@@ -11,16 +13,26 @@ use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\SubtaskController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\UserCapacityController;
+use App\Http\Controllers\WhatsAppWebhookController;
 use App\Http\Middleware\TrackUserActivity;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'site-home')->name('welcome');
+
+Route::get('webhooks/whatsapp', [WhatsAppWebhookController::class, 'verify'])->name('webhooks.whatsapp.verify');
+Route::post('webhooks/whatsapp', [WhatsAppWebhookController::class, 'receive'])->name('webhooks.whatsapp.receive');
 
 Route::middleware(['auth', TrackUserActivity::class])->group(function (): void {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
     Route::get('profile', fn () => view('profile'))->name('profile');
     Route::post('ai/assistant', AiAssistantController::class)->name('ai.assistant');
     Route::post('ai/assistant/speech', AiSpeechController::class)->name('ai.assistant.speech');
+    Route::post('activity/heartbeat', [ActivityIngestionController::class, 'heartbeat'])->name('activity.heartbeat');
+    Route::post('activity/ui-events', [ActivityIngestionController::class, 'uiEvents'])->name('activity.ui-events');
+    Route::get('activity', [ActivityController::class, 'index'])->name('activity.index');
+    Route::get('activity/export', [ActivityController::class, 'export'])->name('activity.export');
+    Route::get('activity/print', [ActivityController::class, 'print'])->name('activity.print');
+    Route::patch('activity/alerts/{alert}/resolve', [ActivityController::class, 'resolveAlert'])->name('activity.alerts.resolve');
 
     Route::get('my-tasks', MyTasksController::class)->name('tasks.mine');
 

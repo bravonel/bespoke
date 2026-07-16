@@ -8,6 +8,7 @@ use App\Models\Project;
 use App\Models\ProjectWorkload;
 use App\Models\Task;
 use App\Models\User;
+use App\Services\Activity\ActivityFeed;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -173,7 +174,7 @@ class ProjectController extends Controller
         return to_route('projects.show', $project)->with('status', 'Proyecto actualizado.');
     }
 
-    public function show(Project $project): View
+    public function show(Project $project, ActivityFeed $activity): View
     {
         $project->load([
             'client',
@@ -236,6 +237,7 @@ class ProjectController extends Controller
             'deliveryTypes' => Project::deliveryTypeOptions(),
             'workloadRoles' => $workloadRoles,
             'collaboratorLoadRows' => $collaboratorLoadRows,
+            'recentActivity' => $activity->forProject($project),
             'boardSummary' => [
                 'total_tasks' => $project->tasks->count(),
                 'done_tasks' => $doneTasks,

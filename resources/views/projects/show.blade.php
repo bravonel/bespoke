@@ -660,5 +660,8 @@ Mandar a cliente"
                 </div>
             </div>
         </div>
+        <div class="mt-6">
+            @include('activity._timeline', ['recentActivity' => $recentActivity, 'project' => $project])
+        </div>
     </div>
 </x-app-layout>

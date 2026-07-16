@@ -2,12 +2,11 @@
 
 namespace App\Services\AI;
 
-use App\Models\Brand;
-use App\Models\Client;
 use App\Models\Project;
 use App\Models\ProjectWorkload;
 use App\Models\Task;
 use App\Models\User;
+use App\Services\Access\OperationalAccess;
 use App\Support\OperationalLabels;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -16,22 +15,24 @@ class AiContextBuilder
 {
     private const OPEN_TASK_STATUSES = ['todo', 'in_progress', 'blocked'];
 
+    public function __construct(private readonly OperationalAccess $access) {}
+
     public function build(User $user, ?string $contextType = null, ?int $contextId = null, ?string $question = null): array
     {
         $today = today();
         $terms = $this->searchTerms($question);
-        $focusedProject = $this->focusedProject($contextType, $contextId);
+        $focusedProject = $this->focusedProject($user, $contextType, $contextId);
 
         $projects = collect()
             ->when($focusedProject, fn (Collection $items) => $items->push($focusedProject))
-            ->merge($this->matchedProjects($terms))
-            ->merge($this->projectsDueSoon())
+            ->merge($this->matchedProjects($user, $terms))
+            ->merge($this->projectsDueSoon($user))
             ->unique('id')
             ->take(10)
             ->values();
 
-        $tasks = $this->relevantTasks($projects->pluck('id'), $terms);
-        $dailyLoad = $this->dailyLoadRows();
+        $tasks = $this->relevantTasks($user, $projects->pluck('id'), $terms);
+        $dailyLoad = $this->dailyLoadRows($user);
         $sources = $this->sources($projects, $tasks);
 
         return [
@@ -44,15 +45,15 @@ class AiContextBuilder
                     'puesto' => $user->puesto,
                 ],
                 'resumen_general' => [
-                    'clientes' => Client::count(),
-                    'marcas' => Brand::count(),
-                    'proyectos_activos' => Project::query()->whereIn('status', ['active', 'in_review'])->count(),
-                    'tareas_abiertas' => Task::query()->whereIn('status', self::OPEN_TASK_STATUSES)->count(),
-                    'tareas_vencidas' => Task::query()
+                    'clientes' => $this->access->projects($user)->distinct()->count('client_id'),
+                    'marcas' => $this->access->projects($user)->whereNotNull('brand_id')->distinct()->count('brand_id'),
+                    'proyectos_activos' => $this->access->projects($user)->whereIn('status', ['active', 'in_review'])->count(),
+                    'tareas_abiertas' => $this->access->tasks($user)->whereIn('status', self::OPEN_TASK_STATUSES)->count(),
+                    'tareas_vencidas' => $this->access->tasks($user)
                         ->whereIn('status', self::OPEN_TASK_STATUSES)
                         ->whereDate('due_at', '<', $today->toDateString())
                         ->count(),
-                    'tareas_bloqueadas' => Task::query()->where('status', 'blocked')->count(),
+                    'tareas_bloqueadas' => $this->access->tasks($user)->where('status', 'blocked')->count(),
                 ],
                 'proyectos_relevantes' => $projects->map(fn (Project $project) => $this->projectSnapshot($project))->all(),
                 'tareas_relevantes' => $tasks->map(fn (Task $task) => $this->taskSnapshot($task))->all(),
@@ -69,22 +70,22 @@ class AiContextBuilder
         ];
     }
 
-    private function focusedProject(?string $contextType, ?int $contextId): ?Project
+    private function focusedProject(User $user, ?string $contextType, ?int $contextId): ?Project
     {
         if ($contextType !== 'project' || ! $contextId) {
             return null;
         }
 
-        return $this->projectQuery()->find($contextId);
+        return $this->projectQuery($user)->find($contextId);
     }
 
-    private function matchedProjects(Collection $terms): Collection
+    private function matchedProjects(User $user, Collection $terms): Collection
     {
         if ($terms->isEmpty()) {
             return collect();
         }
 
-        return $this->projectQuery()
+        return $this->projectQuery($user)
             ->where(function ($query) use ($terms) {
                 $terms->each(function (string $term) use ($query) {
                     $query
@@ -102,9 +103,9 @@ class AiContextBuilder
             ->get();
     }
 
-    private function projectsDueSoon(): Collection
+    private function projectsDueSoon(User $user): Collection
     {
-        return $this->projectQuery()
+        return $this->projectQuery($user)
             ->whereNotIn('status', ['done'])
             ->orderByRaw('due_at is null')
             ->orderBy('due_at')
@@ -112,14 +113,14 @@ class AiContextBuilder
             ->get();
     }
 
-    private function relevantTasks(Collection $projectIds, Collection $terms): Collection
+    private function relevantTasks(User $user, Collection $projectIds, Collection $terms): Collection
     {
-        return Task::query()
+        return $this->access->tasks($user)
             ->with(['project.client', 'project.brand', 'assignee'])
             ->when($projectIds->isNotEmpty(), fn ($query) => $query->whereIn('project_id', $projectIds))
             ->when($projectIds->isEmpty(), fn ($query) => $query->whereIn('status', self::OPEN_TASK_STATUSES))
             ->when($terms->isNotEmpty(), function ($query) use ($terms) {
-                $query->orWhere(function ($subquery) use ($terms) {
+                $query->where(function ($subquery) use ($terms) {
                     $terms->each(function (string $term) use ($subquery) {
                         $subquery
                             ->orWhere('title', 'like', "%{$term}%")
@@ -134,10 +135,10 @@ class AiContextBuilder
             ->get();
     }
 
-    private function dailyLoadRows(): array
+    private function dailyLoadRows(User $user): array
     {
         $date = today()->toDateString();
-        $tasks = Task::query()
+        $tasks = $this->access->tasks($user)
             ->with(['assignee', 'project.client', 'project.brand'])
             ->whereDate('planned_for', $date)
             ->get()
@@ -154,6 +155,7 @@ class AiContextBuilder
 
         $workloads = ProjectWorkload::query()
             ->with(['user', 'project.client', 'project.brand'])
+            ->whereIn('project_id', $this->access->projects($user)->select('projects.id'))
             ->whereDate('work_date', $date)
             ->get()
             ->map(fn (ProjectWorkload $workload) => [
@@ -239,9 +241,9 @@ class AiContextBuilder
             ->all();
     }
 
-    private function projectQuery()
+    private function projectQuery(User $user)
     {
-        return Project::query()
+        return $this->access->projects($user)
             ->with(['client', 'brand', 'owner'])
             ->withCount([
                 'tasks',

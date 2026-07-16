@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
+use App\Services\Activity\ActivityFeed;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -13,7 +14,7 @@ use Illuminate\Validation\Rule;
 
 class TaskController extends Controller
 {
-    public function show(Request $request, Task $task): View
+    public function show(Request $request, Task $task, ActivityFeed $activity): View
     {
         $task->load([
             'project.client',
@@ -43,6 +44,7 @@ class TaskController extends Controller
                 )
                 ->orderBy('name')
                 ->get(),
+            'recentActivity' => $activity->forTask($task),
         ];
 
         if ($request->hasHeader('X-Drawer')) {

@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Support\OperationalLabels;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Project extends Model
 {
@@ -67,6 +69,18 @@ class Project extends Model
         return $this->hasMany(ProjectWorkload::class);
     }
 
+    public function memberships(): HasMany
+    {
+        return $this->hasMany(ProjectMember::class);
+    }
+
+    public function members(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'project_members')
+            ->withPivot(['project_role', 'status', 'added_by'])
+            ->withTimestamps();
+    }
+
     public function operationalCode(): string
     {
         return $this->odt_code ?: $this->code;
@@ -108,7 +122,7 @@ class Project extends Model
         }
 
         return static::materialTypeOptions()[$value]
-            ?? \App\Support\OperationalLabels::get($value);
+            ?? OperationalLabels::get($value);
     }
 
     public static function deliveryTypeOptions(): array

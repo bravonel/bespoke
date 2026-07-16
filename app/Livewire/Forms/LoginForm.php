@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Forms;
 
+use App\Services\Audit\AuditLogger;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
@@ -32,6 +33,10 @@ class LoginForm extends Form
 
         if (! Auth::attempt($this->only(['email', 'password']), $this->remember)) {
             RateLimiter::hit($this->throttleKey());
+
+            app(AuditLogger::class)->recordSystem('auth.login_failed', metadata: [
+                'email_hash' => hash_hmac('sha256', Str::lower($this->email), (string) config('app.key')),
+            ], status: 'failed');
 
             throw ValidationException::withMessages([
                 'form.email' => trans('auth.failed'),
@@ -65,6 +70,10 @@ class LoginForm extends Form
         }
 
         event(new Lockout(request()));
+
+        app(AuditLogger::class)->recordSystem('auth.locked_out', metadata: [
+            'email_hash' => hash_hmac('sha256', Str::lower($this->email), (string) config('app.key')),
+        ], status: 'failed');
 
         $seconds = RateLimiter::availableIn($this->throttleKey());
 

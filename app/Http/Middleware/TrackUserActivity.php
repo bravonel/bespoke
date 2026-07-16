@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\Activity\UserSessionService;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -9,6 +10,8 @@ use Symfony\Component\HttpFoundation\Response;
 
 class TrackUserActivity
 {
+    public function __construct(private readonly UserSessionService $sessions) {}
+
     /**
      * Handle an incoming request.
      *
@@ -19,11 +22,16 @@ class TrackUserActivity
         $user = $request->user();
 
         if ($user && ! $user->isActiveForAccess()) {
+            $this->sessions->end($request, 'revoked', $user);
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
             return redirect()->route('login')->with('status', 'Tu usuario está inactivo.');
+        }
+
+        if ($user) {
+            $this->sessions->current($request, $user);
         }
 
         if ($user && (! $user->last_seen_at || $user->last_seen_at->lt(now()->subMinutes(2)))) {

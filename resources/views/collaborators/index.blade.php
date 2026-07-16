@@ -98,6 +98,10 @@
                             <td>
                                 <div class="font-semibold text-slate-900">{{ $collaborator->name }}</div>
                                 <div class="mt-1 text-xs text-slate-500">{{ $collaborator->email }}</div>
+                                <div class="mt-1 text-xs font-semibold text-slate-500">{{ $roleOptions[$collaborator->role] ?? 'Rol pendiente' }}</div>
+                                @if ($collaborator->whatsapp_enabled)
+                                    <div class="mt-1 text-xs font-semibold text-emerald-700">WhatsApp activo · +{{ $collaborator->whatsapp_phone }}</div>
+                                @endif
                             </td>
                             <td>
                                 <div>{{ $collaborator->area ? \App\Support\OperationalLabels::get($collaborator->area) : 'Sin área' }}</div>
@@ -216,6 +220,28 @@
                     </div>
 
                     <div>
+                        <label class="field-label" for="ec-role-{{ $collaborator->id }}">Rol de acceso</label>
+                        <select id="ec-role-{{ $collaborator->id }}" name="role" class="field">
+                            <option value="">Pendiente de asignar</option>
+                            @foreach ($roleOptions as $value => $label)
+                                <option value="{{ $value }}" @selected((old('_form') === 'edit-collaborator-'.$collaborator->id ? old('role') : $collaborator->role) === $value)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                        <x-input-error :messages="$errors->get('role')" class="mt-2" />
+                    </div>
+
+                    <div>
+                        <label class="field-label" for="ec-whatsapp-{{ $collaborator->id }}">WhatsApp con código de país</label>
+                        <input id="ec-whatsapp-{{ $collaborator->id }}" inputmode="tel" name="whatsapp_phone" class="field" placeholder="5215512345678" value="{{ old('_form') === 'edit-collaborator-'.$collaborator->id ? old('whatsapp_phone') : $collaborator->whatsapp_phone }}">
+                        <x-input-error :messages="$errors->get('whatsapp_phone')" class="mt-2" />
+                    </div>
+
+                    <label class="flex items-center gap-3 rounded-2xl border border-stone-200 px-4 py-3 text-sm font-medium text-slate-700">
+                        <input type="checkbox" name="whatsapp_enabled" value="1" class="rounded border-stone-300" @checked(old('_form') === 'edit-collaborator-'.$collaborator->id ? old('whatsapp_enabled') : $collaborator->whatsapp_enabled)>
+                        Permitir consultas por WhatsApp
+                    </label>
+
+                    <div>
                         <label class="field-label" for="ec-password-{{ $collaborator->id }}">Nueva contraseña</label>
                         <input id="ec-password-{{ $collaborator->id }}" type="password" name="password" class="field" autocomplete="new-password">
                         <p class="mt-1 text-xs text-slate-500">Déjala vacía para conservar la actual.</p>
@@ -281,6 +307,28 @@
                     <input id="collaborator-capacity" type="number" min="0.25" max="24" step="0.25" name="daily_capacity_hours" class="field" value="{{ old('_form') === 'create-collaborator' ? old('daily_capacity_hours', '8') : '8' }}" required>
                     <x-input-error :messages="$errors->get('daily_capacity_hours')" class="mt-2" />
                 </div>
+
+                <div>
+                    <label class="field-label" for="collaborator-role">Rol de acceso</label>
+                    <select id="collaborator-role" name="role" class="field">
+                        <option value="">Pendiente de asignar</option>
+                        @foreach ($roleOptions as $value => $label)
+                            <option value="{{ $value }}" @selected(old('role') === $value)>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                    <x-input-error :messages="$errors->get('role')" class="mt-2" />
+                </div>
+
+                <div>
+                    <label class="field-label" for="collaborator-whatsapp">WhatsApp con código de país</label>
+                    <input id="collaborator-whatsapp" inputmode="tel" name="whatsapp_phone" class="field" placeholder="5215512345678" value="{{ old('_form') === 'create-collaborator' ? old('whatsapp_phone') : '' }}">
+                    <x-input-error :messages="$errors->get('whatsapp_phone')" class="mt-2" />
+                </div>
+
+                <label class="flex items-center gap-3 rounded-2xl border border-stone-200 px-4 py-3 text-sm font-medium text-slate-700">
+                    <input type="checkbox" name="whatsapp_enabled" value="1" class="rounded border-stone-300" @checked(old('_form') === 'create-collaborator' && old('whatsapp_enabled'))>
+                    Permitir consultas por WhatsApp
+                </label>
 
                 <div>
                     <label class="field-label" for="collaborator-password">Contraseña inicial</label>

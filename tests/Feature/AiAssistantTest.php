@@ -171,7 +171,7 @@ class AiAssistantTest extends TestCase
         $this->actingAs($user)
             ->get(route('dashboard'))
             ->assertOk()
-            ->assertSee('Micrófono')
+            ->assertSee('Activar micrófono')
             ->assertSee('Audio activo')
             ->assertSee('ai\\/assistant\\/speech', false);
     }

@@ -417,6 +417,37 @@ class ProjectBoardTest extends TestCase
         ]);
     }
 
+    public function test_subtasks_return_progress_for_drawer_updates(): void
+    {
+        $user = User::factory()->create();
+        $project = $this->makeProject($user);
+        $task = Task::create([
+            'project_id' => $project->id,
+            'title' => 'Revisar claims',
+            'status' => 'in_progress',
+            'priority' => 'high',
+            'sort_order' => 0,
+        ]);
+        $first = Subtask::create([
+            'task_id' => $task->id,
+            'title' => 'Confirmar referencia',
+            'sort_order' => 0,
+        ]);
+        Subtask::create([
+            'task_id' => $task->id,
+            'title' => 'Validar pie legal',
+            'sort_order' => 1,
+        ]);
+
+        $this->actingAs($user)
+            ->patchJson(route('subtasks.update', $first), ['is_done' => true])
+            ->assertOk()
+            ->assertJsonPath('subtask.is_done', true)
+            ->assertJsonPath('progress.completed', 1)
+            ->assertJsonPath('progress.total', 2)
+            ->assertJsonPath('progress.percentage', 50);
+    }
+
     public function test_task_detail_page_is_displayed(): void
     {
         $user = User::factory()->create();

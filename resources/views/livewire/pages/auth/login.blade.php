@@ -1,6 +1,7 @@
 <?php
 
 use App\Livewire\Forms\LoginForm;
+use App\Services\Activity\UserSessionService;
 use Illuminate\Support\Facades\Session;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -9,11 +10,14 @@ new #[Layout('layouts.guest')] class extends Component
 {
     public LoginForm $form;
 
-    public function login(): void
+    public function login(UserSessionService $sessions): void
     {
         $this->validate();
         $this->form->authenticate();
         Session::regenerate();
+        if (request()->hasSession()) {
+            $sessions->start(auth()->user(), request());
+        }
         $this->redirectIntended(default: route('dashboard', absolute: false), navigate: true);
     }
 }; ?>

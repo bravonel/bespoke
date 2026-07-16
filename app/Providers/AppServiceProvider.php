@@ -2,6 +2,14 @@
 
 namespace App\Providers;
 
+use App\Models\Brand;
+use App\Models\Client;
+use App\Models\Project;
+use App\Models\ProjectMember;
+use App\Models\ProjectWorkload;
+use App\Models\Subtask;
+use App\Models\Task;
+use App\Observers\DomainActivityObserver;
 use App\Services\AI\AiProvider;
 use App\Services\AI\AiSpeechProvider;
 use App\Services\AI\OpenAiProvider;
@@ -28,5 +36,9 @@ class AppServiceProvider extends ServiceProvider
     {
         Carbon::setLocale(config('app.locale'));
         CarbonImmutable::setLocale(config('app.locale'));
+
+        foreach ([Client::class, Brand::class, Project::class, Task::class, Subtask::class, ProjectWorkload::class, ProjectMember::class] as $model) {
+            $model::observe(DomainActivityObserver::class);
+        }
     }
 }

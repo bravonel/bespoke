@@ -20,7 +20,18 @@
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="font-['Space_Grotesk'] antialiased">
+    @php
+        $activityRouteProject = request()->route('project');
+        $activityRouteTask = request()->route('task');
+        $activityProjectId = $activityRouteProject instanceof \App\Models\Project
+            ? $activityRouteProject->id
+            : ($activityRouteTask instanceof \App\Models\Task ? $activityRouteTask->project_id : null);
+    @endphp
+    <body
+        class="font-['Space_Grotesk'] antialiased"
+        data-activity-page="{{ request()->route()?->getName() }}"
+        data-activity-project-id="{{ $activityProjectId }}"
+    >
         <div class="min-h-screen">
             <livewire:layout.navigation />
 

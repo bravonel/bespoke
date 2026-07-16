@@ -8,16 +8,33 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'email_verified_at', 'password', 'area', 'puesto', 'daily_capacity_minutes', 'is_active', 'last_login_at', 'last_seen_at'])]
+#[Fillable(['name', 'email', 'email_verified_at', 'password', 'role', 'area', 'puesto', 'daily_capacity_minutes', 'is_active', 'last_login_at', 'last_seen_at', 'whatsapp_phone', 'whatsapp_enabled'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
+
+    public const ROLE_ADMIN = 'admin';
+
+    public const ROLE_DIRECTION = 'direction';
+
+    public const ROLE_ACCOUNTS = 'accounts';
+
+    public const ROLE_TRAFFIC_PM = 'traffic_pm';
+
+    public const ROLE_MEDICAL = 'medical';
+
+    public const ROLE_DESIGN = 'design';
+
+    public const ROLE_LEGAL_REGULATORY = 'legal_regulatory';
+
+    public const ROLE_CLIENT_REVIEWER = 'client_reviewer';
 
     /**
      * Get the attributes that should be cast.
@@ -33,6 +50,7 @@ class User extends Authenticatable
             'is_active' => 'boolean',
             'last_login_at' => 'datetime',
             'last_seen_at' => 'datetime',
+            'whatsapp_enabled' => 'boolean',
         ];
     }
 
@@ -54,6 +72,35 @@ class User extends Authenticatable
     public function isActiveForAccess(): bool
     {
         return $this->is_active !== false;
+    }
+
+    public function hasRole(string|array $roles): bool
+    {
+        $roles = is_array($roles) ? $roles : [$roles];
+
+        return $this->role !== null && in_array($this->role, $roles, true);
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->hasRole(self::ROLE_ADMIN);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function roleOptions(): array
+    {
+        return [
+            self::ROLE_ADMIN => 'Administrador',
+            self::ROLE_DIRECTION => 'Dirección',
+            self::ROLE_ACCOUNTS => 'Cuentas',
+            self::ROLE_TRAFFIC_PM => 'Tráfico / PM',
+            self::ROLE_MEDICAL => 'Médico',
+            self::ROLE_DESIGN => 'Diseño',
+            self::ROLE_LEGAL_REGULATORY => 'Legal / Regulatorio',
+            self::ROLE_CLIENT_REVIEWER => 'Revisor de cliente',
+        ];
     }
 
     public function dailyCapacityHours(): float
@@ -104,5 +151,42 @@ class User extends Authenticatable
     public function projectWorkloads(): HasMany
     {
         return $this->hasMany(ProjectWorkload::class);
+    }
+
+    public function projectMemberships(): HasMany
+    {
+        return $this->hasMany(ProjectMember::class);
+    }
+
+    public function whatsappMessages(): HasMany
+    {
+        return $this->hasMany(WhatsAppMessage::class);
+    }
+
+    public function activityEvents(): HasMany
+    {
+        return $this->hasMany(ActivityEvent::class, 'actor_id');
+    }
+
+    public function userSessions(): HasMany
+    {
+        return $this->hasMany(UserSession::class);
+    }
+
+    public function uiEvents(): HasMany
+    {
+        return $this->hasMany(UiEvent::class);
+    }
+
+    public function canViewTeamActivity(): bool
+    {
+        return $this->hasRole([self::ROLE_ADMIN, self::ROLE_DIRECTION]);
+    }
+
+    public function memberProjects(): BelongsToMany
+    {
+        return $this->belongsToMany(Project::class, 'project_members')
+            ->withPivot(['project_role', 'status', 'added_by'])
+            ->withTimestamps();
     }
 }

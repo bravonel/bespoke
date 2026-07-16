@@ -53,6 +53,10 @@ new class extends Component
                     <x-nav-link :href="route('tasks.mine')" :active="request()->routeIs('tasks.mine')" wire:navigate>
                         {{ __('Mis tareas') }}
                     </x-nav-link>
+
+                    <x-nav-link :href="route('activity.index')" :active="request()->routeIs('activity.*')" wire:navigate>
+                        {{ auth()->user()->canViewTeamActivity() ? __('Actividad') : __('Mi actividad') }}
+                    </x-nav-link>
                 </div>
             </div>
 
@@ -123,6 +127,10 @@ new class extends Component
 
             <x-responsive-nav-link :href="route('tasks.mine')" :active="request()->routeIs('tasks.mine')" wire:navigate>
                 {{ __('Mis tareas') }}
+            </x-responsive-nav-link>
+
+            <x-responsive-nav-link :href="route('activity.index')" :active="request()->routeIs('activity.*')" wire:navigate>
+                {{ auth()->user()->canViewTeamActivity() ? __('Actividad') : __('Mi actividad') }}
             </x-responsive-nav-link>
         </div>
 
