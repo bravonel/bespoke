@@ -45,14 +45,43 @@
                 <input id="f-q" type="text" name="q" class="field mt-0" placeholder="Nombre, ODT o código…" value="{{ $filters['q'] ?? '' }}" x-on:input="submitSoon($el.form)">
             </div>
 
-            <div class="min-w-[10rem]">
-                <label class="field-label" for="f-client">Cliente</label>
-                <select id="f-client" name="client_id" class="field mt-0" x-on:change="submitForm($el.form)">
-                    <option value="">Todos los clientes</option>
-                    @foreach ($clients as $client)
-                        <option value="{{ $client->id }}" @selected(($filters['client_id'] ?? '') == $client->id)>{{ $client->name }}</option>
-                    @endforeach
-                </select>
+            <div class="min-w-[12rem]">
+                <label class="field-label">Cliente</label>
+                <details class="group relative">
+                    <summary class="field mt-0 flex cursor-pointer list-none items-center justify-between gap-3">
+                        <span>{{ count($filters['client_ids']) ? count($filters['client_ids']).' seleccionados' : 'Todos los clientes' }}</span>
+                        <span class="text-slate-400 transition group-open:rotate-180">⌄</span>
+                    </summary>
+                    <div class="absolute z-30 mt-2 max-h-72 min-w-full overflow-y-auto rounded-2xl border border-stone-200 bg-white p-2 shadow-xl">
+                        @foreach ($clients as $client)
+                            <label class="flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-sm hover:bg-stone-50">
+                                <input type="checkbox" name="client_ids[]" value="{{ $client->id }}" class="rounded border-stone-300 text-pink-600 focus:ring-pink-500" @checked(in_array($client->id, $filters['client_ids'], true))>
+                                <span>{{ $client->name }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+                </details>
+            </div>
+
+            <div class="min-w-[12rem]">
+                <label class="field-label">Marca</label>
+                <details class="group relative">
+                    <summary class="field mt-0 flex cursor-pointer list-none items-center justify-between gap-3">
+                        <span>{{ count($filters['brand_ids']) ? count($filters['brand_ids']).' seleccionadas' : 'Todas las marcas' }}</span>
+                        <span class="text-slate-400 transition group-open:rotate-180">⌄</span>
+                    </summary>
+                    <div class="absolute z-30 mt-2 max-h-72 min-w-[16rem] overflow-y-auto rounded-2xl border border-stone-200 bg-white p-2 shadow-xl">
+                        @foreach ($brands->groupBy('client.name') as $clientName => $clientBrands)
+                            <div class="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">{{ $clientName }}</div>
+                            @foreach ($clientBrands as $brand)
+                                <label class="flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-sm hover:bg-stone-50">
+                                    <input type="checkbox" name="brand_ids[]" value="{{ $brand->id }}" class="rounded border-stone-300 text-pink-600 focus:ring-pink-500" @checked(in_array($brand->id, $filters['brand_ids'], true))>
+                                    <span>{{ $brand->name }}</span>
+                                </label>
+                            @endforeach
+                        @endforeach
+                    </div>
+                </details>
             </div>
 
             <div class="min-w-[9rem]">
@@ -76,6 +105,10 @@
             </div>
 
             <div class="flex gap-2">
+                <button type="submit" class="button-secondary">Aplicar filtros</button>
+                <a href="{{ route('projects.export', request()->query()) }}" class="button-secondary" title="Descargar los proyectos filtrados en Excel">
+                    Descargar Excel
+                </a>
                 @if (array_filter($filters))
                     <a href="{{ route('projects.index') }}" class="button-secondary">Limpiar</a>
                 @endif
@@ -101,8 +134,7 @@
                     @forelse ($projects as $project)
                         <tr>
                             <td>
-                                <div class="font-semibold text-slate-900">{{ $project->name }}</div>
-                                <div class="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">{{ $project->operationalCodeLabel() }}</div>
+                                <div class="font-semibold text-slate-900">{{ $project->odt_code ?: $project->name }}</div>
                                 @if ($project->odt_code)
                                     <div class="mt-1 text-[11px] uppercase tracking-[0.16em] text-slate-400">{{ $project->code }}</div>
                                 @endif
@@ -165,25 +197,15 @@
                     @csrf
 
                     <div>
-                        <label class="field-label" for="project-name">Nombre del proyecto</label>
-                        <input id="project-name" name="name" class="field" value="{{ old('name') }}" required>
-                        <x-input-error :messages="$errors->get('name')" class="mt-2" />
-                    </div>
-
-                    <div>
-                        <label class="field-label" for="project-odt-code">ODT / Orden de compra</label>
-                        <input id="project-odt-code" name="odt_code" class="field" value="{{ old('odt_code') }}">
+                        <label class="field-label" for="project-odt-code">ODT</label>
+                        <input id="project-odt-code" name="odt_code" class="field" value="{{ old('odt_code') }}" required>
                         <x-input-error :messages="$errors->get('odt_code')" class="mt-2" />
                     </div>
 
-                    <div>
-                        <label class="field-label" for="project-type">Tipo de material</label>
-                        <select id="project-type" name="project_type" class="field" required>
-                            @foreach ($materialTypes as $value => $label)
-                                <option value="{{ $value }}" @selected(old('project_type', 'campana') === $value)>{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </div>
+                    @include('projects._material-field', [
+                        'project' => null,
+                        'fieldPrefix' => 'project-',
+                    ])
 
                     @include('projects._context-fields', [
                         'project' => null,

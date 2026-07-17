@@ -18,25 +18,15 @@
                     @csrf
 
                     <div>
-                        <label class="field-label" for="project-name">Nombre del proyecto</label>
-                        <input id="project-name" name="name" class="field" value="{{ old('name') }}" required>
-                        <x-input-error :messages="$errors->get('name')" class="mt-2" />
-                    </div>
-
-                    <div>
-                        <label class="field-label" for="project-odt-code">ODT / Orden de compra</label>
-                        <input id="project-odt-code" name="odt_code" class="field" value="{{ old('odt_code') }}">
+                        <label class="field-label" for="project-odt-code">ODT</label>
+                        <input id="project-odt-code" name="odt_code" class="field" value="{{ old('odt_code') }}" required>
                         <x-input-error :messages="$errors->get('odt_code')" class="mt-2" />
                     </div>
 
-                    <div>
-                        <label class="field-label" for="project-type">Tipo de material</label>
-                        <select id="project-type" name="project_type" class="field" required>
-                            @foreach ($materialTypes as $value => $label)
-                                <option value="{{ $value }}" @selected(old('project_type', 'campana') === $value)>{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </div>
+                    @include('projects._material-field', [
+                        'project' => null,
+                        'fieldPrefix' => 'project-',
+                    ])
 
                     @include('projects._context-fields', [
                         'project' => null,

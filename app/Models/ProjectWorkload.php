@@ -12,6 +12,7 @@ class ProjectWorkload extends Model
 
     protected $fillable = [
         'project_id',
+        'task_id',
         'user_id',
         'role',
         'work_date',
@@ -30,6 +31,11 @@ class ProjectWorkload extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    public function task(): BelongsTo
+    {
+        return $this->belongsTo(Task::class);
     }
 
     public function user(): BelongsTo

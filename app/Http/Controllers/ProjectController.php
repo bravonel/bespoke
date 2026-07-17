@@ -9,12 +9,17 @@ use App\Models\ProjectWorkload;
 use App\Models\Task;
 use App\Models\User;
 use App\Services\Activity\ActivityFeed;
+use App\Support\OperationalLabels;
+use App\Support\SimpleXlsxWriter;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ProjectController extends Controller
 {
@@ -24,26 +29,8 @@ class ProjectController extends Controller
             ->with(['client', 'brand', 'owner'])
             ->withCount('tasks');
 
-        if ($client = $request->integer('client_id', 0)) {
-            $query->where('client_id', $client);
-        }
-
-        if ($status = $request->string('status')->toString()) {
-            $query->where('status', $status);
-        }
-
-        if ($stage = $request->string('stage')->toString()) {
-            $query->where('current_stage', $stage);
-        }
-
-        if ($search = $request->string('q')->toString()) {
-            $query->where(function ($subquery) use ($search) {
-                $subquery
-                    ->where('name', 'like', "%{$search}%")
-                    ->orWhere('code', 'like', "%{$search}%")
-                    ->orWhere('odt_code', 'like', "%{$search}%");
-            });
-        }
+        $filters = $this->projectFilters($request);
+        $this->applyProjectFilters($query, $filters);
 
         return view('projects.index', [
             'projects' => $query
@@ -59,8 +46,44 @@ class ProjectController extends Controller
             'materialTypes' => Project::materialTypeOptions(),
             'deliveryTypes' => Project::deliveryTypeOptions(),
             'workloadRoles' => ProjectWorkload::roleOptions(),
-            'filters' => $request->only(['client_id', 'status', 'stage', 'q']),
+            'filters' => $filters,
         ]);
+    }
+
+    public function export(Request $request): BinaryFileResponse
+    {
+        $query = Project::query()->with(['client', 'brand', 'owner'])->withCount('tasks');
+        $this->applyProjectFilters($query, $this->projectFilters($request));
+
+        $rows = [[
+            'ODT', 'Cliente', 'Marca', 'Tipo de material', 'Etapa', 'Estatus',
+            'Prioridad', 'Responsable', 'Inicio', 'Entrega', 'Tareas',
+        ]];
+
+        foreach ($query->latest()->get() as $project) {
+            $rows[] = [
+                $project->odt_code ?: $project->code,
+                $project->client?->name,
+                $project->brand?->name ?: 'Sin marca',
+                Project::materialTypeLabel($project->project_type),
+                OperationalLabels::get($project->current_stage),
+                OperationalLabels::get($project->status),
+                OperationalLabels::get($project->priority),
+                $project->owner?->name ?: 'Sin asignar',
+                $project->starts_at?->format('d/m/Y'),
+                $project->due_at?->format('d/m/Y'),
+                $project->tasks_count,
+            ];
+        }
+
+        $path = tempnam(sys_get_temp_dir(), 'bespoke-projects-');
+        SimpleXlsxWriter::write($rows, $path);
+
+        return response()
+            ->download($path, 'proyectos-'.now()->format('Y-m-d').'.xlsx', [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            ])
+            ->deleteFileAfterSend(true);
     }
 
     public function create(): View
@@ -80,9 +103,7 @@ class ProjectController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $request->merge([
-            'odt_code' => filled($request->input('odt_code')) ? trim((string) $request->input('odt_code')) : null,
-        ]);
+        $this->normalizeProjectInput($request);
 
         $validated = $request->validate([
             'client_id' => ['required', 'exists:clients,id'],
@@ -94,8 +115,9 @@ class ProjectController extends Controller
             ],
             'owner_id' => ['nullable', 'exists:users,id'],
             'name' => ['required', 'string', 'max:255'],
-            'odt_code' => ['nullable', 'string', 'max:255', 'unique:projects,odt_code'],
+            'odt_code' => ['required', 'string', 'max:255', 'unique:projects,odt_code'],
             'project_type' => ['required', 'string', 'max:255'],
+            'project_type_other' => ['nullable', 'string', 'max:255'],
             'delivery_type' => ['nullable', Rule::in(array_keys(Project::deliveryTypeOptions()))],
             'target_audience' => ['nullable', 'string', 'max:255'],
             'material_size' => ['nullable', 'string', 'max:255'],
@@ -112,10 +134,11 @@ class ProjectController extends Controller
             'workloads.*.work_date' => ['nullable', 'date'],
             'workloads.*.estimated_hours' => ['nullable', 'numeric', 'min:0', 'max:24'],
             'workloads.*.notes' => ['nullable', 'string', 'max:255'],
+            'workloads.*.status' => ['nullable', Rule::in(Task::statusOptions())],
         ]);
 
         $project = Project::create([
-            ...collect($validated)->except('workloads')->all(),
+            ...collect($validated)->except(['workloads', 'project_type_other'])->all(),
             'owner_id' => $validated['owner_id'] ?? $request->user()->id,
             'code' => 'BSP-'.Str::upper(Str::random(6)),
         ]);
@@ -134,9 +157,7 @@ class ProjectController extends Controller
 
     public function update(Request $request, Project $project): RedirectResponse
     {
-        $request->merge([
-            'odt_code' => filled($request->input('odt_code')) ? trim((string) $request->input('odt_code')) : null,
-        ]);
+        $this->normalizeProjectInput($request);
 
         $validated = $request->validate([
             'client_id' => ['required', 'exists:clients,id'],
@@ -148,8 +169,9 @@ class ProjectController extends Controller
             ],
             'owner_id' => ['nullable', 'exists:users,id'],
             'name' => ['required', 'string', 'max:255'],
-            'odt_code' => ['nullable', 'string', 'max:255', Rule::unique('projects', 'odt_code')->ignore($project)],
+            'odt_code' => ['required', 'string', 'max:255', Rule::unique('projects', 'odt_code')->ignore($project)],
             'project_type' => ['required', 'string', 'max:255'],
+            'project_type_other' => ['nullable', 'string', 'max:255'],
             'delivery_type' => ['nullable', Rule::in(array_keys(Project::deliveryTypeOptions()))],
             'target_audience' => ['nullable', 'string', 'max:255'],
             'material_size' => ['nullable', 'string', 'max:255'],
@@ -166,9 +188,10 @@ class ProjectController extends Controller
             'workloads.*.work_date' => ['nullable', 'date'],
             'workloads.*.estimated_hours' => ['nullable', 'numeric', 'min:0', 'max:24'],
             'workloads.*.notes' => ['nullable', 'string', 'max:255'],
+            'workloads.*.status' => ['nullable', Rule::in(Task::statusOptions())],
         ]);
 
-        $project->update(collect($validated)->except('workloads')->all());
+        $project->update(collect($validated)->except(['workloads', 'project_type_other'])->all());
         $this->syncWorkloads($project, $validated['workloads'] ?? []);
 
         return to_route('projects.show', $project)->with('status', 'Proyecto actualizado.');
@@ -181,6 +204,7 @@ class ProjectController extends Controller
             'brand',
             'owner',
             'workloads.user',
+            'workloads.task',
             'tasks' => fn ($query) => $query
                 ->with('assignee')
                 ->with([
@@ -268,6 +292,7 @@ class ProjectController extends Controller
             ]);
 
         $workloadRows = $project->workloads
+            ->whereNull('task_id')
             ->map(fn (ProjectWorkload $workload) => [
                 'kind' => 'workload',
                 'user_id' => $workload->user_id,
@@ -331,7 +356,8 @@ class ProjectController extends Controller
 
     private function syncWorkloads(Project $project, array $workloads): void
     {
-        $project->workloads()->delete();
+        $existingByRole = $project->workloads()->with('task')->get()->keyBy('role');
+        $nextSortOrder = ((int) $project->tasks()->max('sort_order')) + 1;
 
         foreach (ProjectWorkload::roleOptions() as $role => $label) {
             $row = $workloads[$role] ?? [];
@@ -339,19 +365,101 @@ class ProjectController extends Controller
             $workDate = filled($row['work_date'] ?? null) ? $row['work_date'] : null;
             $estimatedMinutes = $this->estimatedMinutes($row['estimated_hours'] ?? null);
             $notes = filled($row['notes'] ?? null) ? trim((string) $row['notes']) : null;
+            $taskStatus = $row['status'] ?? 'todo';
+            $existing = $existingByRole->get($role);
 
             if ($userId === null && $workDate === null && $estimatedMinutes === null && $notes === null) {
+                $existing?->task?->delete();
+                $existing?->delete();
+
                 continue;
             }
 
-            $project->workloads()->create([
+            $workload = $project->workloads()->updateOrCreate(['role' => $role], [
                 'user_id' => $userId,
-                'role' => $role,
                 'work_date' => $workDate,
                 'estimated_minutes' => $estimatedMinutes,
                 'notes' => $notes,
             ]);
+
+            if ($notes === null) {
+                $workload->task?->delete();
+                $workload->update(['task_id' => null]);
+
+                continue;
+            }
+
+            $task = $workload->task ?: new Task([
+                'project_id' => $project->id,
+                'priority' => 'normal',
+                'sort_order' => $nextSortOrder++,
+            ]);
+            $task->fill([
+                'assigned_to' => $userId,
+                'title' => $notes,
+                'status' => $taskStatus,
+                'planned_for' => $workDate,
+                'estimated_minutes' => $estimatedMinutes,
+                'due_at' => $project->due_at,
+                'completed_at' => $taskStatus === 'done' ? ($task->completed_at ?? now()) : null,
+            ])->save();
+            $workload->update(['task_id' => $task->id]);
         }
+    }
+
+    private function normalizeProjectInput(Request $request): void
+    {
+        $odt = trim((string) $request->input('odt_code'));
+        $materialType = trim((string) $request->input('project_type'));
+
+        if ($materialType === 'otro') {
+            $materialType = trim((string) $request->input('project_type_other'));
+            if ($materialType === '') {
+                throw ValidationException::withMessages([
+                    'project_type_other' => 'Escribe el tipo de material.',
+                ]);
+            }
+        }
+
+        $request->merge([
+            'name' => $odt,
+            'odt_code' => $odt !== '' ? $odt : null,
+            'project_type' => $materialType,
+        ]);
+    }
+
+    /** @return array{client_ids: array<int, int>, brand_ids: array<int, int>, status: string, stage: string, q: string} */
+    private function projectFilters(Request $request): array
+    {
+        $clientIds = collect($request->input('client_ids', []))
+            ->push($request->integer('client_id') ?: null)
+            ->filter()->map(fn ($id) => (int) $id)->unique()->values()->all();
+        $brandIds = collect($request->input('brand_ids', []))
+            ->filter()->map(fn ($id) => (int) $id)->unique()->values()->all();
+
+        return [
+            'client_ids' => $clientIds,
+            'brand_ids' => $brandIds,
+            'status' => $request->string('status')->toString(),
+            'stage' => $request->string('stage')->toString(),
+            'q' => $request->string('q')->trim()->toString(),
+        ];
+    }
+
+    /** @param array{client_ids: array<int, int>, brand_ids: array<int, int>, status: string, stage: string, q: string} $filters */
+    private function applyProjectFilters(Builder $query, array $filters): void
+    {
+        $query
+            ->when($filters['client_ids'], fn (Builder $query, array $ids) => $query->whereIn('client_id', $ids))
+            ->when($filters['brand_ids'], fn (Builder $query, array $ids) => $query->whereIn('brand_id', $ids))
+            ->when($filters['status'], fn (Builder $query, string $status) => $query->where('status', $status))
+            ->when($filters['stage'], fn (Builder $query, string $stage) => $query->where('current_stage', $stage))
+            ->when($filters['q'], function (Builder $query, string $search) {
+                $query->where(fn (Builder $subquery) => $subquery
+                    ->where('name', 'like', "%{$search}%")
+                    ->orWhere('code', 'like', "%{$search}%")
+                    ->orWhere('odt_code', 'like', "%{$search}%"));
+            });
     }
 
     private function estimatedMinutes(null|int|float|string $hours): ?int

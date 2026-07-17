@@ -21,9 +21,10 @@
                     $existing?->estimated_minutes !== null ? $existing->estimated_minutes / 60 : ''
                 );
                 $notes = old("workloads.{$role}.notes", $existing?->notes);
+                $taskStatus = old("workloads.{$role}.status", $existing?->task?->status ?? 'todo');
             @endphp
 
-            <div class="grid gap-3 rounded-2xl border border-stone-200 bg-white p-3 lg:grid-cols-[8rem_minmax(0,1fr)_10rem_8rem_minmax(0,1fr)]">
+            <div class="grid gap-3 rounded-2xl border border-stone-200 bg-white p-3 lg:grid-cols-[7rem_minmax(0,1fr)_9rem_7rem_minmax(0,1fr)_9rem]">
                 <div class="flex items-center text-sm font-semibold text-slate-700">{{ $roleLabel }}</div>
 
                 <div>
@@ -57,6 +58,23 @@
                     <label class="field-label sr-only" for="{{ $fieldPrefix }}workload-{{ $role }}-notes">Actividad {{ $roleLabel }}</label>
                     <input id="{{ $fieldPrefix }}workload-{{ $role }}-notes" name="workloads[{{ $role }}][notes]" class="field mt-0" value="{{ $notes }}" placeholder="Actividad">
                     <x-input-error :messages="$errors->get('workloads.'.$role.'.notes')" class="mt-2" />
+                </div>
+
+                <div>
+                    <label class="field-label sr-only" for="{{ $fieldPrefix }}workload-{{ $role }}-status">Estatus {{ $roleLabel }}</label>
+                    <select id="{{ $fieldPrefix }}workload-{{ $role }}-status" name="workloads[{{ $role }}][status]" class="field mt-0">
+                        @foreach (\App\Models\Task::statusMeta() as $status => $meta)
+                            <option value="{{ $status }}" @selected($taskStatus === $status)>
+                                {{ match ($status) {
+                                    'todo' => 'Por hacer',
+                                    'in_progress' => 'En proceso',
+                                    'blocked' => 'Bloqueado',
+                                    'done' => 'Entregado',
+                                } }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <x-input-error :messages="$errors->get('workloads.'.$role.'.status')" class="mt-2" />
                 </div>
             </div>
         @endforeach

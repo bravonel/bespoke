@@ -317,8 +317,8 @@
 
             <div class="panel p-6">
                 <div>
-                    <h2 class="text-lg font-semibold text-slate-950">Actividad reciente</h2>
-                    <p class="mt-1 text-sm text-slate-500">Primer acercamiento a la vista de pendientes y movimiento real del equipo.</p>
+                    <h2 class="text-lg font-semibold text-slate-950">Tareas recientes</h2>
+                    <p class="mt-1 text-sm text-slate-500">Pendientes operativos creados recientemente.</p>
                 </div>
 
                 <div class="mt-6 space-y-3">
@@ -343,43 +343,6 @@
                     @endforelse
                 </div>
 
-                <div class="mt-8 border-t border-stone-200 pt-6">
-                    <div>
-                        <h3 class="text-lg font-semibold text-slate-950">Equipo activo</h3>
-                        <p class="mt-1 text-sm text-slate-500">Última actividad registrada dentro del sistema.</p>
-                    </div>
-
-                    <div class="mt-5 space-y-3">
-                        @forelse ($activeUsers as $person)
-                            <div class="flex items-start justify-between gap-4 rounded-2xl border border-stone-200 bg-white p-4">
-                                <div class="min-w-0">
-                                    <div class="flex items-center gap-2">
-                                        <span class="h-2.5 w-2.5 rounded-full {{ $person->isActiveNow() ? 'bg-emerald-500' : 'bg-stone-300' }}"></span>
-                                        <div class="truncate font-semibold text-slate-900">{{ $person->name }}</div>
-                                    </div>
-                                    <div class="mt-1 text-sm text-slate-500">
-                                        {{ $person->area ? \App\Support\OperationalLabels::get($person->area) : 'Sin área' }}
-                                        @if ($person->puesto)
-                                            · {{ \App\Support\OperationalLabels::get($person->puesto) }}
-                                        @endif
-                                    </div>
-                                    <div class="mt-2 text-xs text-slate-400">
-                                        Último inicio: {{ $person->lastLoginLabel() }}
-                                    </div>
-                                </div>
-
-                                <div class="shrink-0 text-right">
-                                    <div class="text-sm font-semibold {{ $person->isActiveNow() ? 'text-emerald-700' : 'text-slate-700' }}">{{ $person->lastSeenLabel() }}</div>
-                                    <div class="mt-1 text-xs uppercase tracking-[0.16em] text-slate-400">
-                                        {{ \App\Models\Task::formatEstimatedMinutes($person->daily_capacity_minutes) }} por día
-                                    </div>
-                                </div>
-                            </div>
-                        @empty
-                            <div class="rounded-2xl bg-stone-50 p-5 text-sm text-slate-500">Todavía no hay actividad registrada.</div>
-                        @endforelse
-                    </div>
-                </div>
             </div>
         </div>
     </div>

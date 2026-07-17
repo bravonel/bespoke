@@ -4,7 +4,7 @@
             <div>
                 <p class="page-kicker">Trazabilidad</p>
                 <h1 class="page-title mt-2">{{ $canViewTeam ? 'Centro de actividad' : 'Mi actividad' }}</h1>
-                <p class="mt-2 max-w-3xl text-sm text-slate-600">Sesiones, cambios operativos e interacciones relevantes con contexto verificable.</p>
+                <p class="mt-2 max-w-3xl text-sm text-slate-600">Evidencia operativa para aclarar cuándo ingresó una persona, cuándo interactuó y cuándo realizó un cambio comprobable.</p>
             </div>
             <div class="flex flex-wrap gap-2">
                 <a href="{{ route('activity.export', request()->query()) }}" class="button-secondary" data-activity="report.exported" data-activity-target="activity-csv">Exportar CSV</a>
@@ -69,6 +69,69 @@
             </form>
         </section>
 
+        @if ($canViewTeam)
+            <section class="panel overflow-hidden">
+                <div class="border-b border-stone-200 px-6 py-5">
+                    <h2 class="text-lg font-semibold text-slate-950">Seguimiento por colaborador</h2>
+                    <p class="mt-1 max-w-3xl text-sm text-slate-500">La interacción acredita presencia en Bespoke OS. Para comprobar que un trabajo se realizó, consulta el último cambio confirmado y la bitácora.</p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead class="bg-stone-50 text-left text-xs uppercase tracking-[0.14em] text-slate-400">
+                            <tr>
+                                <th class="px-5 py-3">Colaborador</th>
+                                <th class="px-5 py-3">Última interacción</th>
+                                <th class="px-5 py-3">Último cambio confirmado</th>
+                                <th class="px-5 py-3">Último inicio</th>
+                                <th class="px-5 py-3 text-right">Evidencia</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-stone-100">
+                            @foreach ($teamOverview as $person)
+                                @php
+                                    $lastInteraction = $person->monitor_last_interaction_at;
+                                    $lastChange = $person->monitor_last_confirmed_change_at;
+                                @endphp
+                                <tr>
+                                    <td class="px-5 py-4">
+                                        <div class="font-semibold text-slate-900">{{ $person->name }}</div>
+                                        <div class="text-xs text-slate-400">{{ $person->area ? \App\Support\OperationalLabels::get($person->area) : 'Sin área' }}</div>
+                                    </td>
+                                    <td class="whitespace-nowrap px-5 py-4">
+                                        @if ($lastInteraction)
+                                            <div class="font-semibold text-slate-800">{{ $lastInteraction->translatedFormat('d M Y · H:i:s') }}</div>
+                                            <div class="text-xs text-slate-400">{{ $lastInteraction->diffForHumans() }}</div>
+                                        @else
+                                            <span class="text-slate-400">Sin interacción registrada</span>
+                                        @endif
+                                    </td>
+                                    <td class="whitespace-nowrap px-5 py-4">
+                                        @if ($lastChange)
+                                            <div class="font-semibold text-slate-800">{{ $lastChange->translatedFormat('d M Y · H:i:s') }}</div>
+                                            <div class="text-xs text-slate-400">{{ $lastChange->diffForHumans() }}</div>
+                                        @else
+                                            <span class="text-slate-400">Sin cambios confirmados</span>
+                                        @endif
+                                    </td>
+                                    <td class="whitespace-nowrap px-5 py-4 text-slate-600">
+                                        @if ($person->last_login_at)
+                                            <div>{{ $person->last_login_at->translatedFormat('d M Y · H:i:s') }}</div>
+                                            <div class="text-xs text-slate-400">{{ $person->last_login_at->diffForHumans() }}</div>
+                                        @else
+                                            <span class="text-slate-400">Sin inicio registrado</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-5 py-4 text-right">
+                                        <a href="{{ route('activity.index', ['actor_id' => $person->id, 'from' => today()->subDays(30)->toDateString(), 'to' => today()->toDateString()]) }}" class="font-semibold text-indigo-600 hover:text-indigo-800">Ver evidencia</a>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        @endif
+
         <div class="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
             <div class="metric-card"><div class="metric-label">Eventos</div><div class="metric-value">{{ $summary['events'] }}</div></div>
             <div class="metric-card"><div class="metric-label">Cambios confirmados</div><div class="metric-value">{{ $summary['changes'] }}</div></div>
@@ -122,7 +185,12 @@
                     </thead>
                     <tbody class="divide-y divide-stone-100">
                         @forelse ($events as $event)
-                            @php $changes = $event->metadata['changes'] ?? []; @endphp
+                            @php
+                                $changes = $event->metadata['changes'] ?? [];
+                                $entityLabel = $event->auditable?->title
+                                    ?? $event->auditable?->name
+                                    ?? $event->auditable?->code;
+                            @endphp
                             <tr class="align-top">
                                 <td class="whitespace-nowrap px-5 py-4 text-slate-600">
                                     <div>{{ $event->created_at?->translatedFormat('d M Y') }}</div>
@@ -138,7 +206,9 @@
                                 </td>
                                 <td class="px-5 py-4 text-slate-600">
                                     <div>{{ $event->project?->name ?: $event->client?->name ?: 'General' }}</div>
-                                    @if ($event->auditable_type)<div class="text-xs text-slate-400">{{ class_basename($event->auditable_type) }} #{{ $event->auditable_id }}</div>@endif
+                                    @if ($event->auditable_type)
+                                        <div class="text-xs text-slate-400">{{ class_basename($event->auditable_type) }} #{{ $event->auditable_id }}{{ $entityLabel ? ' · '.$entityLabel : '' }}</div>
+                                    @endif
                                 </td>
                                 <td class="px-5 py-4"><span class="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-semibold text-slate-600">{{ strtoupper($event->channel) }}</span></td>
                                 <td class="px-5 py-4">
@@ -197,7 +267,7 @@
                     @forelse ($uiEvents as $uiEvent)
                         <div class="flex items-start justify-between gap-4 border-b border-stone-100 pb-3">
                             <div><div class="font-semibold text-slate-800">{{ $labels::get($uiEvent->event_name) }}</div><div class="text-xs text-slate-400">{{ $uiEvent->user?->name }} · {{ $uiEvent->target ?: $uiEvent->page }}</div></div>
-                            <div class="whitespace-nowrap text-xs text-slate-400">{{ $uiEvent->occurred_at?->format('d M H:i') }}</div>
+                            <div class="whitespace-nowrap text-xs text-slate-400">{{ $uiEvent->occurred_at?->format('d M Y · H:i:s') }}</div>
                         </div>
                     @empty
                         <p class="text-sm text-slate-500">Sin interacciones registradas.</p>

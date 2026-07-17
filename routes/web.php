@@ -55,6 +55,7 @@ Route::middleware(['auth', TrackUserActivity::class])->group(function (): void {
     Route::delete('brands/{brand}', [BrandController::class, 'destroy'])->name('brands.destroy');
 
     Route::get('projects', [ProjectController::class, 'index'])->name('projects.index');
+    Route::get('projects-export', [ProjectController::class, 'export'])->name('projects.export');
     Route::get('projects/create', [ProjectController::class, 'create'])->name('projects.create');
     Route::post('projects', [ProjectController::class, 'store'])->name('projects.store');
     Route::get('projects/{project}', [ProjectController::class, 'show'])->name('projects.show');

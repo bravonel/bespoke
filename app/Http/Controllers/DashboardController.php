@@ -66,6 +66,7 @@ class DashboardController extends Controller
 
         $dailyWorkloadsQuery = ProjectWorkload::query()
             ->with(['user', 'project.client', 'project.brand'])
+            ->whereNull('task_id')
             ->whereDate('work_date', $selectedDate->toDateString())
             ->orderBy('role')
             ->orderBy('id');
@@ -161,13 +162,6 @@ class DashboardController extends Controller
             'selectedDate' => $selectedDate,
             'areas' => User::query()->active()->whereNotNull('area')->distinct()->orderBy('area')->pluck('area'),
             'users' => User::query()->active()->orderBy('name')->get(),
-            'activeUsers' => User::query()
-                ->active()
-                ->orderByRaw('last_seen_at is null')
-                ->orderByDesc('last_seen_at')
-                ->orderBy('name')
-                ->limit(10)
-                ->get(),
             'dailyFilters' => [
                 'area' => $areaFilter,
                 'user_id' => $userFilter,

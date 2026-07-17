@@ -51,21 +51,35 @@ class ActivitySystemTest extends TestCase
         $this->assertNotContains('keystroke.captured', config('activity.ui_events'));
     }
 
-    public function test_regular_user_sees_only_own_activity_but_direction_sees_team(): void
+    public function test_regular_user_sees_only_own_activity_but_admin_sees_team(): void
     {
         $first = User::factory()->create(['role' => User::ROLE_DESIGN]);
         $second = User::factory()->create(['role' => User::ROLE_MEDICAL]);
-        $direction = User::factory()->create(['role' => User::ROLE_DIRECTION]);
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
         app(AuditLogger::class)->record('user.tested', $first, $first);
         app(AuditLogger::class)->record('user.tested', $second, $second);
 
         $ownResponse = $this->actingAs($first)->get(route('activity.index'));
         $this->assertTrue($ownResponse->viewData('events')->every(fn ($event) => $event->actor_id === $first->id));
 
-        $teamResponse = $this->actingAs($direction)->get(route('activity.index'));
+        $ownResponse->assertDontSee('Seguimiento por colaborador');
+
+        $teamResponse = $this->actingAs($admin)->get(route('activity.index'));
         $actorIds = $teamResponse->viewData('events')->pluck('actor_id');
         $this->assertTrue($actorIds->contains($first->id));
         $this->assertTrue($actorIds->contains($second->id));
+        $teamResponse->assertSee('Seguimiento por colaborador')->assertSee('Ver evidencia');
+    }
+
+    public function test_dashboard_does_not_expose_employee_monitoring(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        $this->actingAs($admin)->get(route('dashboard'))
+            ->assertOk()
+            ->assertDontSee('Equipo activo')
+            ->assertDontSee('Última actividad registrada dentro del sistema')
+            ->assertSee('Tareas recientes');
     }
 
     public function test_database_rejects_direct_activity_mutation_and_hash_chain_verifies(): void

@@ -2,12 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Models\Brand;
 use App\Models\Client;
 use App\Models\Project;
 use App\Models\ProjectWorkload;
 use App\Models\Subtask;
 use App\Models\Task;
 use App\Models\User;
+use App\Support\SimpleXlsxReader;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
@@ -136,6 +138,109 @@ class ProjectBoardTest extends TestCase
 
         $response->assertRedirect(route('projects.show', $project));
         $this->assertSame('ODT ODT-13041', $project->operationalCodeLabel());
+        $this->assertSame('ODT-13041', $project->name);
+    }
+
+    public function test_custom_material_and_initial_activity_are_saved_as_a_board_task(): void
+    {
+        $user = User::factory()->create();
+        $client = Client::create(['name' => 'Roche', 'status' => 'active']);
+
+        $response = $this->actingAs($user)->post(route('projects.store'), [
+            'client_id' => $client->id,
+            'odt_code' => '15001',
+            'project_type' => 'otro',
+            'project_type_other' => 'Experiencia interactiva',
+            'priority' => 'normal',
+            'status' => 'active',
+            'current_stage' => 'brief',
+            'workloads' => [
+                'design' => [
+                    'user_id' => $user->id,
+                    'work_date' => '2026-07-17',
+                    'estimated_hours' => '3',
+                    'notes' => 'Preparar prototipo',
+                    'status' => 'blocked',
+                ],
+            ],
+        ]);
+
+        $project = Project::where('odt_code', '15001')->firstOrFail();
+        $task = $project->tasks()->firstOrFail();
+
+        $response->assertRedirect(route('projects.show', $project));
+        $this->assertSame('15001', $project->name);
+        $this->assertSame('Experiencia interactiva', $project->project_type);
+        $this->assertSame('Preparar prototipo', $task->title);
+        $this->assertSame('blocked', $task->status);
+        $this->assertSame(180, $task->estimated_minutes);
+        $this->assertSame($task->id, $project->workloads()->firstOrFail()->task_id);
+    }
+
+    public function test_material_catalog_is_alphabetical_with_other_last(): void
+    {
+        $materials = Project::materialTypeOptions();
+        $labels = array_values($materials);
+
+        $this->assertSame('APP', $labels[0]);
+        $this->assertSame('Otro', $labels[array_key_last($labels)]);
+        $this->assertContains('Save the date / Invitación', $labels);
+        $this->assertContains('Stickers', $labels);
+    }
+
+    public function test_project_filters_accept_multiple_clients_and_brands(): void
+    {
+        $user = User::factory()->create();
+        $firstClient = Client::create(['name' => 'Cliente A', 'status' => 'active']);
+        $secondClient = Client::create(['name' => 'Cliente B', 'status' => 'active']);
+        $thirdClient = Client::create(['name' => 'Cliente C', 'status' => 'active']);
+        $firstBrand = Brand::create(['client_id' => $firstClient->id, 'name' => 'Marca A', 'status' => 'active']);
+        $secondBrand = Brand::create(['client_id' => $secondClient->id, 'name' => 'Marca B', 'status' => 'active']);
+        $thirdBrand = Brand::create(['client_id' => $thirdClient->id, 'name' => 'Marca C', 'status' => 'active']);
+
+        foreach ([[$firstClient, $firstBrand, 'ODT-A'], [$secondClient, $secondBrand, 'ODT-B'], [$thirdClient, $thirdBrand, 'ODT-C']] as [$client, $brand, $odt]) {
+            Project::create([
+                'client_id' => $client->id,
+                'brand_id' => $brand->id,
+                'owner_id' => $user->id,
+                'name' => $odt,
+                'odt_code' => $odt,
+                'code' => 'BSP-'.$odt,
+                'project_type' => 'video',
+                'priority' => 'normal',
+                'status' => 'active',
+                'current_stage' => 'brief',
+            ]);
+        }
+
+        $response = $this->actingAs($user)->get(route('projects.index', [
+            'client_ids' => [$firstClient->id, $secondClient->id],
+            'brand_ids' => [$firstBrand->id, $secondBrand->id],
+        ]));
+
+        $response->assertOk()->assertSee('ODT-A')->assertSee('ODT-B')->assertDontSee('ODT-C');
+    }
+
+    public function test_projects_export_is_a_real_filtered_xlsx_file(): void
+    {
+        $user = User::factory()->create();
+        $wanted = $this->makeProject($user);
+        $wanted->update(['odt_code' => 'EXPORT-1', 'name' => 'EXPORT-1', 'code' => 'BSP-EXPORT-1']);
+        $other = $this->makeProject($user);
+        $other->update(['odt_code' => 'EXPORT-2', 'name' => 'EXPORT-2']);
+
+        $response = $this->actingAs($user)->get(route('projects.export', [
+            'q' => 'EXPORT-1',
+        ]));
+
+        $response->assertOk();
+        $this->assertStringContainsString('.xlsx', (string) $response->headers->get('content-disposition'));
+
+        $rows = SimpleXlsxReader::rows($response->baseResponse->getFile()->getPathname());
+        $flat = collect($rows)->flatten()->all();
+
+        $this->assertContains('EXPORT-1', $flat);
+        $this->assertNotContains('EXPORT-2', $flat);
     }
 
     public function test_projects_can_store_client_context_and_workloads(): void

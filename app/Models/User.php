@@ -180,7 +180,7 @@ class User extends Authenticatable
 
     public function canViewTeamActivity(): bool
     {
-        return $this->hasRole([self::ROLE_ADMIN, self::ROLE_DIRECTION]);
+        return $this->isAdmin();
     }
 
     public function memberProjects(): BelongsToMany

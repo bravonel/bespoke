@@ -48,6 +48,9 @@ class ActivityController extends Controller
             'failed' => (clone $query)->where('status', 'failed')->count(),
             'sessions' => (clone $sessionQuery)->count(),
         ];
+        $teamOverview = $user->canViewTeamActivity()
+            ? $this->teamOverview()
+            : collect();
 
         return view('activity.index', [
             'events' => $query->paginate(50)->withQueryString(),
@@ -64,6 +67,7 @@ class ActivityController extends Controller
             'eventTypes' => ActivityEvent::query()->distinct()->orderBy('event_type')->pluck('event_type'),
             'labels' => ActivityLabels::class,
             'canViewTeam' => $user->canViewTeamActivity(),
+            'teamOverview' => $teamOverview,
             'summary' => $summary,
         ]);
     }
@@ -133,7 +137,7 @@ class ActivityController extends Controller
     private function eventQuery(User $user, array $filters): Builder
     {
         return ActivityEvent::query()
-            ->with(['actor', 'project', 'client', 'userSession'])
+            ->with(['actor', 'project', 'client', 'userSession', 'auditable'])
             ->when(! $user->canViewTeamActivity(), fn (Builder $query) => $query->where('actor_id', $user->id))
             ->when($user->canViewTeamActivity() && $filters['actor_id'], fn (Builder $query) => $query->where('actor_id', $filters['actor_id']))
             ->when($filters['project_id'], fn (Builder $query) => $query->where('project_id', $filters['project_id']))
@@ -161,5 +165,38 @@ class ActivityController extends Controller
                 ? $request->string('channel')->toString()
                 : null,
         ];
+    }
+
+    private function teamOverview()
+    {
+        return User::query()
+            ->active()
+            ->withMax('userSessions as last_session_interaction_at', 'last_activity_at')
+            ->withMax('uiEvents as last_ui_interaction_at', 'occurred_at')
+            ->withMax([
+                'activityEvents as last_confirmed_change_at' => fn (Builder $query) => $query
+                    ->where('status', 'success')
+                    ->whereNotNull('auditable_type'),
+            ], 'created_at')
+            ->orderBy('name')
+            ->get()
+            ->each(function (User $person): void {
+                $lastInteraction = collect([
+                    $person->last_seen_at,
+                    $person->last_session_interaction_at,
+                    $person->last_ui_interaction_at,
+                ])->filter()
+                    ->map(fn ($value) => Carbon::parse($value))
+                    ->sortDesc()
+                    ->first();
+
+                $person->setAttribute('monitor_last_interaction_at', $lastInteraction);
+                $person->setAttribute(
+                    'monitor_last_confirmed_change_at',
+                    $person->last_confirmed_change_at
+                        ? Carbon::parse($person->last_confirmed_change_at)
+                        : null,
+                );
+            });
     }
 }

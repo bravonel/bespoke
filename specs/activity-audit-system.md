@@ -21,14 +21,14 @@ targets:
 - Meaningful UI events are accepted only from an allowlist, in batches of at most 50, and never accept arbitrary event names or raw form contents.
 - Browser heartbeat only counts active time while the page is visible and recently interacted with.
 - Activity events are append-only in the model and database, and form a verifiable hash chain.
-- Administrators and Direction can inspect all activity. Every other active role can inspect only their own activity.
+- Only general administrators can inspect team activity. Every other active role, including Direction, can inspect only their own activity.
 - The activity center filters by dates, actor, event, project and channel, displays before/after changes, and exports the same authorized result set as CSV.
+- Employee monitoring is never shown on the general dashboard. The activity center shows each collaborator's exact last interaction, last login and last confirmed business change as separate facts.
+- A technical interaction proves presence in Bespoke OS but never counts as proof that a task was completed; canonical business changes are the source of evidence for completion and status disputes.
 - Viewing and exporting the activity center are themselves audited.
 - Project and task views show recent entity timelines.
 - Retention is configurable by data class; a scheduled command purges expired UI/session detail while preserving canonical audit events for their longer window.
 - The system never captures keystrokes, pointer coordinates, clipboard data, screenshots, passwords, tokens or unsaved form values.
 
-[@test](../tests/Feature/ActivityCaptureTest.php)
-[@test](../tests/Feature/ActivityCenterTest.php)
-[@test](../tests/Feature/UserSessionTrackingTest.php)
-[@test](../tests/Feature/ActivityRetentionTest.php)
+[@test](../tests/Feature/Activity/ActivitySystemTest.php)
+[@test](../tests/Feature/ActivityEventTest.php)

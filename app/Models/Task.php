@@ -3,9 +3,9 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Model;
 
 class Task extends Model
 {
@@ -59,15 +59,15 @@ class Task extends Model
                 'description' => 'Lo que sigue y aún no arranca.',
             ],
             'in_progress' => [
-                'label' => 'En curso',
+                'label' => 'En proceso',
                 'description' => 'Lo que hoy está en manos del equipo.',
             ],
             'blocked' => [
-                'label' => 'Bloqueadas',
+                'label' => 'Bloqueado',
                 'description' => 'Lo que necesita destrabe o respuesta.',
             ],
             'done' => [
-                'label' => 'Listas',
+                'label' => 'Entregado',
                 'description' => 'Lo ya resuelto o entregado.',
             ],
         ];

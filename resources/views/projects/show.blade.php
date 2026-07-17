@@ -419,28 +419,16 @@
                         'fieldPrefix' => 'ep-',
                     ])
 
-                    <div class="lg:col-span-2">
-                        <label class="field-label" for="ep-name">Nombre del proyecto</label>
-                        <input id="ep-name" name="name" class="field" value="{{ $project->name }}" required>
-                    </div>
-
                     <div>
-                        <label class="field-label" for="ep-odt-code">ODT / Orden de compra</label>
-                        <input id="ep-odt-code" name="odt_code" class="field" value="{{ old('odt_code', $project->odt_code) }}">
+                        <label class="field-label" for="ep-odt-code">ODT</label>
+                        <input id="ep-odt-code" name="odt_code" class="field" value="{{ old('odt_code', $project->odt_code) }}" required>
                         <x-input-error :messages="$errors->get('odt_code')" class="mt-2" />
                     </div>
 
-                    <div>
-                        <label class="field-label" for="ep-type">Tipo de material</label>
-                        <select id="ep-type" name="project_type" class="field" required>
-                            @if ($project->project_type && ! array_key_exists($project->project_type, $materialTypes))
-                                <option value="{{ $project->project_type }}" selected>{{ \App\Models\Project::materialTypeLabel($project->project_type) }}</option>
-                            @endif
-                            @foreach ($materialTypes as $value => $label)
-                                <option value="{{ $value }}" @selected(old('project_type', $project->project_type) === $value)>{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </div>
+                    @include('projects._material-field', [
+                        'project' => $project,
+                        'fieldPrefix' => 'ep-',
+                    ])
 
                     @include('projects._context-fields', [
                         'project' => $project,
