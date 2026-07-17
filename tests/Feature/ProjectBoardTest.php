@@ -313,6 +313,8 @@ class ProjectBoardTest extends TestCase
             ->assertSee('href="https://contoso.sharepoint.com/proyecto"', false)
             ->assertSee('href="https://www.contoso.com/legal"', false)
             ->assertSee('href="https://contoso.sharepoint.com/referencias"', false)
+            ->assertSee('aria-label="Abrir enlace a contoso.sharepoint.com"', false)
+            ->assertSee('<svg aria-hidden="true"', false)
             ->assertSee('target="_blank"', false);
     }
 
@@ -336,6 +338,7 @@ class ProjectBoardTest extends TestCase
             ->assertOk()
             ->assertSee('href="https://contoso.sharepoint.com/tarea"', false)
             ->assertSee('href="https://www.contoso.com/backups"', false)
+            ->assertSee('aria-label="Abrir enlace a contoso.sharepoint.com"', false)
             ->assertSee('target="_blank"', false);
 
         $drawer = $this->actingAs($user)->withHeader('X-Drawer', '1')->get(route('tasks.show', $task));
