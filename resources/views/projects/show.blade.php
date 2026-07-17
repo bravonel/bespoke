@@ -398,7 +398,7 @@
         </section>
 
         {{-- Editar proyecto modal --}}
-        <x-modal name="edit-project">
+        <x-modal name="edit-project" max-width="4xl">
             <div class="modal-header flex items-start justify-between gap-4">
                 <div>
                     <h2 class="text-lg font-semibold text-slate-950">Editar proyecto</h2>

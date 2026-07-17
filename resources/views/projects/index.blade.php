@@ -176,7 +176,7 @@
     </div>
 
     {{-- Crear proyecto modal --}}
-    <x-modal name="create-project" :show="$errors->any()" max-width="2xl">
+    <x-modal name="create-project" :show="$errors->any()" max-width="4xl">
         <div class="modal-header flex items-start justify-between gap-4">
             <div>
                 <h2 class="text-lg font-semibold text-slate-950">Nuevo proyecto</h2>
