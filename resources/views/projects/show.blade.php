@@ -498,23 +498,29 @@
                     ])
 
                     <div class="lg:col-span-2 flex items-center justify-between gap-3">
-                        <form
-                            method="POST"
-                            action="{{ route('projects.destroy', $project) }}"
-                            onsubmit="return confirm('¿Eliminar el proyecto {{ addslashes($project->name) }} y todas sus tareas? Esta acción no se puede deshacer.')"
+                        <button
+                            type="submit"
+                            form="delete-project-form"
+                            class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
                         >
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100">
-                                Eliminar proyecto
-                            </button>
-                        </form>
+                            Eliminar proyecto
+                        </button>
 
                         <div class="flex gap-3">
                             <button type="button" x-on:click="$dispatch('close')" data-close-modal="edit-project" class="button-secondary">Cancelar</button>
                             <button class="button-primary">Guardar cambios</button>
                         </div>
                     </div>
+                </form>
+
+                <form
+                    id="delete-project-form"
+                    method="POST"
+                    action="{{ route('projects.destroy', $project) }}"
+                    onsubmit="return confirm('¿Eliminar el proyecto {{ addslashes($project->name) }} y todas sus tareas? Esta acción no se puede deshacer.')"
+                >
+                    @csrf
+                    @method('DELETE')
                 </form>
             </div>
         </x-modal>

@@ -377,6 +377,36 @@ class ProjectBoardTest extends TestCase
             ->assertSee('data-close-modal="edit-project"', false);
     }
 
+    public function test_project_can_be_deleted_from_its_independent_form(): void
+    {
+        $user = User::factory()->create();
+        $project = $this->makeProject($user);
+
+        Task::create([
+            'project_id' => $project->id,
+            'title' => 'Tarea que se eliminará con el proyecto',
+            'status' => 'todo',
+            'priority' => 'normal',
+            'sort_order' => 0,
+        ]);
+
+        $page = $this->actingAs($user)->get(route('projects.show', $project));
+
+        $page
+            ->assertOk()
+            ->assertSee('form="delete-project-form"', false)
+            ->assertSee('id="delete-project-form"', false)
+            ->assertSee('name="_method" value="DELETE"', false);
+
+        $response = $this->actingAs($user)->delete(route('projects.destroy', $project));
+
+        $response
+            ->assertRedirect(route('projects.index'))
+            ->assertSessionHas('status', 'Proyecto eliminado.');
+        $this->assertDatabaseMissing('projects', ['id' => $project->id]);
+        $this->assertDatabaseMissing('tasks', ['project_id' => $project->id]);
+    }
+
     public function test_project_detail_shows_hours_by_collaborator(): void
     {
         $user = User::factory()->create();
