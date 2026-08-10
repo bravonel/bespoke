@@ -4,10 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Brand;
 use App\Models\Client;
-use App\Models\Project;
 use App\Models\ProjectWorkload;
 use App\Models\Task;
 use App\Models\User;
+use App\Services\Access\OperationalAccess;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\View\View;
@@ -15,8 +15,9 @@ use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
-    public function __invoke(Request $request): View
+    public function __invoke(Request $request, OperationalAccess $access): View
     {
+        $user = $request->user();
         $selectedDate = $this->selectedDate($request);
         $areaFilter = $request->string('area')->toString();
         $userFilter = $request->integer('user_id') ?: null;
@@ -24,29 +25,29 @@ class DashboardController extends Controller
         $summary = [
             'clients' => Client::count(),
             'brands' => Brand::count(),
-            'projects' => Project::count(),
-            'active_projects' => Project::whereIn('status', ['active', 'in_review'])->count(),
-            'open_tasks' => Task::whereIn('status', ['todo', 'in_progress', 'blocked'])->count(),
+            'projects' => (clone $access->projects($user))->count(),
+            'active_projects' => (clone $access->projects($user))->whereIn('status', ['active', 'in_review'])->count(),
+            'open_tasks' => (clone $access->tasks($user))->whereIn('status', ['todo', 'in_progress', 'blocked'])->count(),
             'my_tasks' => Task::where('assigned_to', auth()->id())
                 ->whereIn('status', ['todo', 'in_progress', 'blocked'])
                 ->count(),
         ];
 
-        $projectsDueSoon = Project::query()
+        $projectsDueSoon = $access->projects($user)
             ->with(['client', 'brand', 'owner'])
-            ->whereNotIn('status', ['done'])
+            ->whereNotIn('status', Task::closedStatuses())
             ->orderByRaw('due_at is null')
             ->orderBy('due_at')
             ->limit(6)
             ->get();
 
-        $recentTasks = Task::query()
+        $recentTasks = $access->tasks($user)
             ->with(['project', 'assignee'])
             ->latest()
             ->limit(8)
             ->get();
 
-        $dailyTasksQuery = Task::query()
+        $dailyTasksQuery = $access->tasks($user)
             ->with(['assignee', 'project.client', 'project.brand'])
             ->whereDate('planned_for', $selectedDate->toDateString())
             ->orderByRaw("CASE status WHEN 'blocked' THEN 0 WHEN 'in_progress' THEN 1 WHEN 'todo' THEN 2 ELSE 3 END")
@@ -66,6 +67,7 @@ class DashboardController extends Controller
 
         $dailyWorkloadsQuery = ProjectWorkload::query()
             ->with(['user', 'project.client', 'project.brand'])
+            ->whereIn('project_id', $access->projects($user)->select('projects.id'))
             ->whereNull('task_id')
             ->whereDate('work_date', $selectedDate->toDateString())
             ->orderBy('role')
@@ -186,7 +188,7 @@ class DashboardController extends Controller
 
     private function isOverdueForSelectedDate(?CarbonInterface $dueAt, ?string $status, CarbonImmutable $selectedDate): bool
     {
-        if (! $dueAt || $status === 'done') {
+        if (! $dueAt || in_array($status, Task::inactiveStatuses(), true)) {
             return false;
         }
 

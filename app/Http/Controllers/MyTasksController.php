@@ -24,13 +24,15 @@ class MyTasksController extends Controller
                 'subtasks as completed_subtasks_count' => fn ($q) => $q->where('is_done', true),
             ])
             ->orderByRaw("CASE status WHEN 'blocked' THEN 0 WHEN 'in_progress' THEN 1 WHEN 'todo' THEN 2 ELSE 3 END")
+            ->orderByRaw('personal_priority is null')
+            ->orderBy('personal_priority')
             ->orderByRaw('planned_for is null')
             ->orderBy('planned_for')
             ->orderBy('due_at')
             ->orderBy('id')
             ->get();
 
-        $openTasks = $tasks->whereNotIn('status', ['done']);
+        $openTasks = $tasks->whereNotIn('status', Task::inactiveStatuses());
 
         $sections = [
             'today' => $openTasks
@@ -42,18 +44,18 @@ class MyTasksController extends Controller
             'unscheduled' => $openTasks
                 ->filter(fn (Task $task) => $task->planned_for === null)
                 ->values(),
-            'done' => $tasks->where('status', 'done')->values(),
+            'done' => $tasks->whereIn('status', Task::inactiveStatuses())->values(),
         ];
 
         $overdue = $tasks
-            ->whereNotIn('status', ['done'])
+            ->whereNotIn('status', Task::inactiveStatuses())
             ->filter(fn (Task $t) => $t->due_at?->isPast())
             ->count();
 
         return view('tasks.mine', [
-            'tasks'          => $tasks,
-            'sections'       => $sections,
-            'overdue'        => $overdue,
+            'tasks' => $tasks,
+            'sections' => $sections,
+            'overdue' => $overdue,
             'todayEstimatedMinutes' => (int) $sections['today']->sum(fn (Task $task) => $task->estimated_minutes ?? 0),
             'taskStatusMeta' => Task::statusMeta(),
             'taskPriorityMeta' => Task::priorityMeta(),

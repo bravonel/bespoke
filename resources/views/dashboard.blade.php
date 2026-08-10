@@ -247,7 +247,7 @@
                                             <td class="py-3 pr-4 text-slate-600">{{ \App\Models\Task::formatEstimatedMinutes($activity['estimated_minutes']) }}</td>
                                             <td class="py-3 pr-4 text-slate-600">{{ $activity['due_at']?->translatedFormat('d M Y') ?: 'Sin fecha' }}</td>
                                             <td class="py-3 text-right">
-                                                @if ($task && $task->status !== 'done')
+                                                @if ($task && ! in_array($task->status, \App\Models\Task::inactiveStatuses(), true))
                                                     <form method="POST" action="{{ route('tasks.update-schedule', $task) }}">
                                                         @csrf
                                                         @method('PATCH')

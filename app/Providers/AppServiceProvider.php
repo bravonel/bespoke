@@ -9,6 +9,7 @@ use App\Models\ProjectMember;
 use App\Models\ProjectWorkload;
 use App\Models\Subtask;
 use App\Models\Task;
+use App\Models\TaskComment;
 use App\Observers\DomainActivityObserver;
 use App\Services\AI\AiProvider;
 use App\Services\AI\AiSpeechProvider;
@@ -37,7 +38,7 @@ class AppServiceProvider extends ServiceProvider
         Carbon::setLocale(config('app.locale'));
         CarbonImmutable::setLocale(config('app.locale'));
 
-        foreach ([Client::class, Brand::class, Project::class, Task::class, Subtask::class, ProjectWorkload::class, ProjectMember::class] as $model) {
+        foreach ([Client::class, Brand::class, Project::class, Task::class, TaskComment::class, Subtask::class, ProjectWorkload::class, ProjectMember::class] as $model) {
             $model::observe(DomainActivityObserver::class);
         }
     }

@@ -22,12 +22,15 @@
                 );
                 $notes = old("workloads.{$role}.notes", $existing?->notes);
                 $taskStatus = old("workloads.{$role}.status", $existing?->task?->status ?? 'todo');
+                $personalPriority = old("workloads.{$role}.personal_priority", $existing?->task?->personal_priority);
+                $blockedReason = old("workloads.{$role}.blocked_reason", $existing?->task?->blocked_reason);
+                $returnReason = old("workloads.{$role}.return_reason");
             @endphp
 
             <div class="rounded-2xl border border-stone-200 bg-white p-4">
                 <div class="mb-3 text-sm font-semibold text-slate-700">{{ $roleLabel }}</div>
 
-                <div class="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                <div class="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                     <div class="min-w-0">
                         <label class="field-label sr-only" for="{{ $fieldPrefix }}workload-{{ $role }}-user">Responsable {{ $roleLabel }}</label>
                         <select id="{{ $fieldPrefix }}workload-{{ $role }}-user" name="workloads[{{ $role }}][user_id]" class="field mt-0">
@@ -66,16 +69,26 @@
                         <select id="{{ $fieldPrefix }}workload-{{ $role }}-status" name="workloads[{{ $role }}][status]" class="field mt-0">
                             @foreach (\App\Models\Task::statusMeta() as $status => $meta)
                                 <option value="{{ $status }}" @selected($taskStatus === $status)>
-                                    {{ match ($status) {
-                                        'todo' => 'Por hacer',
-                                        'in_progress' => 'En proceso',
-                                        'blocked' => 'Bloqueado',
-                                        'done' => 'Entregado',
-                                    } }}
+                                    {{ $meta['label'] }}
                                 </option>
                             @endforeach
                         </select>
                         <x-input-error :messages="$errors->get('workloads.'.$role.'.status')" class="mt-2" />
+                    </div>
+
+                    <div class="min-w-0">
+                        <label class="field-label sr-only" for="{{ $fieldPrefix }}workload-{{ $role }}-priority">Prioridad personal {{ $roleLabel }}</label>
+                        <input id="{{ $fieldPrefix }}workload-{{ $role }}-priority" type="number" min="1" max="999" name="workloads[{{ $role }}][personal_priority]" class="field mt-0" value="{{ $personalPriority }}" placeholder="Orden personal">
+                    </div>
+
+                    <div class="min-w-0 sm:col-span-2">
+                        <label class="field-label sr-only" for="{{ $fieldPrefix }}workload-{{ $role }}-blocked">Motivo de bloqueo {{ $roleLabel }}</label>
+                        <input id="{{ $fieldPrefix }}workload-{{ $role }}-blocked" name="workloads[{{ $role }}][blocked_reason]" class="field mt-0" value="{{ $blockedReason }}" placeholder="Motivo de bloqueo (obligatorio si aplica)">
+                    </div>
+
+                    <div class="min-w-0 sm:col-span-2">
+                        <label class="field-label sr-only" for="{{ $fieldPrefix }}workload-{{ $role }}-return">Motivo de devolución {{ $roleLabel }}</label>
+                        <input id="{{ $fieldPrefix }}workload-{{ $role }}-return" name="workloads[{{ $role }}][return_reason]" class="field mt-0" value="{{ $returnReason }}" placeholder="Qué debe corregirse si se devuelve">
                     </div>
                 </div>
             </div>

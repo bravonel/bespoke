@@ -19,7 +19,39 @@ class OperationalAccess
 
     public function hasGlobalAccess(User $user): bool
     {
-        return $user->hasRole(self::GLOBAL_ROLES);
+        // Existing accounts without an assigned role keep their historical access
+        // during the passive rollout. Once a role is assigned, least privilege applies.
+        return $user->role === null || $user->hasRole(self::GLOBAL_ROLES);
+    }
+
+    public function canCreateProjects(User $user): bool
+    {
+        return $this->hasGlobalAccess($user);
+    }
+
+    public function canViewProject(User $user, Project $project): bool
+    {
+        return $this->projects($user)->whereKey($project)->exists();
+    }
+
+    public function canManageProject(User $user, Project $project): bool
+    {
+        return $this->hasGlobalAccess($user) || $project->owner_id === $user->id;
+    }
+
+    public function canViewTask(User $user, Task $task): bool
+    {
+        return $this->tasks($user)->whereKey($task)->exists();
+    }
+
+    public function canManageTask(User $user, Task $task): bool
+    {
+        return $this->canManageProject($user, $task->project);
+    }
+
+    public function canOperateTask(User $user, Task $task): bool
+    {
+        return $this->canManageTask($user, $task) || $task->assigned_to === $user->id;
     }
 
     public function projects(User $user): Builder

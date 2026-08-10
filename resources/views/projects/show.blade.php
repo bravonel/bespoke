@@ -18,7 +18,9 @@
             <div class="flex flex-wrap gap-2">
                 <x-status-badge :value="$project->status" />
                 <x-status-badge :value="$project->current_stage" />
-                <button type="button" @click="$dispatch('open-modal', 'edit-project')" data-open-modal="edit-project" class="button-secondary">Editar proyecto</button>
+                @if ($canManageProject)
+                    <button type="button" @click="$dispatch('open-modal', 'edit-project')" data-open-modal="edit-project" class="button-secondary">Editar proyecto</button>
+                @endif
                 <a href="{{ route('projects.index') }}" class="button-secondary">Volver</a>
             </div>
         </div>
@@ -60,7 +62,7 @@
         <div class="grid gap-6 sm:grid-cols-2 xl:grid-cols-6">
             <div class="metric-card">
                 <div class="metric-label">Tareas activas</div>
-                <div class="metric-value">{{ $boardSummary['total_tasks'] - $boardSummary['done_tasks'] }}</div>
+                <div class="metric-value">{{ $boardSummary['total_tasks'] - $boardSummary['done_tasks'] - $boardSummary['finalized_tasks'] }}</div>
             </div>
             <div class="metric-card">
                 <div class="metric-label">Avance</div>
@@ -284,7 +286,7 @@
                     </select>
 
                     <div class="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-2.5 text-xs uppercase tracking-[0.18em] text-slate-500">
-                        {{ $boardSummary['done_tasks'] }}/{{ $boardSummary['total_tasks'] }} listas
+                        {{ $boardSummary['done_tasks'] + $boardSummary['finalized_tasks'] }}/{{ $boardSummary['total_tasks'] }} entregadas o finalizadas
                     </div>
 
                     <button
@@ -321,13 +323,13 @@
                                     $subtaskProgress = $task->subtasks_count > 0
                                         ? (int) round(($task->completed_subtasks_count / $task->subtasks_count) * 100)
                                         : 0;
-                                    $isOverdue = $task->status !== 'done' && $task->due_at?->isPast();
+                                    $isOverdue = ! in_array($task->status, \App\Models\Task::inactiveStatuses(), true) && $task->due_at?->isPast();
                                     $openSubtasksCount = $task->subtasks_count - $task->completed_subtasks_count;
                                 @endphp
 
                                 <article
                                     class="task-card task-card--compact"
-                                    draggable="true"
+                                    draggable="{{ $canManageProject || $task->assigned_to === auth()->id() ? 'true' : 'false' }}"
                                     data-task-card
                                     data-task-id="{{ $task->id }}"
                                     data-move-url="{{ route('tasks.move', $task) }}"
@@ -342,6 +344,9 @@
                                                     {{ $task->assignee?->name ?: 'Sin asignar' }}
                                                 </p>
                                                 <h3 class="mt-1.5 text-sm font-semibold text-slate-950">{{ $task->title }}</h3>
+                                                @if ($task->personal_priority)
+                                                    <span class="mt-2 inline-flex rounded-full bg-slate-950 px-2 py-0.5 text-[10px] font-bold text-white">Orden #{{ $task->personal_priority }}</span>
+                                                @endif
 
                                                 <div class="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold">
                                                     <span class="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-slate-600">
@@ -365,11 +370,16 @@
                                                         </span>
                                                     @endif
                                                 </div>
+                                                @if ($task->status === 'blocked' && $task->blocked_reason)
+                                                    <p class="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs leading-5 text-rose-800">{{ $task->blocked_reason }}</p>
+                                                @endif
                                             </button>
                                         </div>
 
                                         <div class="flex shrink-0 flex-col items-end gap-2">
-                                            <span class="drag-handle hidden md:inline-flex">Arrastrar</span>
+                                            @if ($canManageProject || $task->assigned_to === auth()->id())
+                                                <span class="drag-handle hidden md:inline-flex">Arrastrar</span>
+                                            @endif
                                         </div>
                                     </div>
 
@@ -385,19 +395,22 @@
                         </div>
 
                         {{-- Per-column add button --}}
-                        <button
-                            type="button"
-                            @click="openTaskModal('{{ $status }}')"
-                            class="mt-3 w-full rounded-2xl border border-dashed border-stone-300 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400 transition hover:border-[#F5A623]/50 hover:text-[#F5A623]"
-                        >
-                            + Agregar
-                        </button>
+                        @if ($canManageProject && ! in_array($status, \App\Models\Task::inactiveStatuses(), true))
+                            <button
+                                type="button"
+                                @click="openTaskModal('{{ $status }}')"
+                                class="mt-3 w-full rounded-2xl border border-dashed border-stone-300 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400 transition hover:border-[#F5A623]/50 hover:text-[#F5A623]"
+                            >
+                                + Agregar
+                            </button>
+                        @endif
                     </section>
                 @endforeach
             </div>
         </section>
 
         {{-- Editar proyecto modal --}}
+        @if ($canManageProject)
         <x-modal name="edit-project" max-width="4xl">
             <div class="modal-header flex items-start justify-between gap-4">
                 <div>
@@ -524,8 +537,10 @@
                 </form>
             </div>
         </x-modal>
+        @endif
 
         {{-- Nueva tarea modal --}}
+        @if ($canManageProject)
         <div
             x-show="taskModal"
             x-on:keydown.escape.window="taskModal = false"
@@ -616,7 +631,9 @@
                             <label class="field-label" for="task-status">Estatus</label>
                             <select id="task-status" name="status" class="field" x-model="taskStatus">
                                 @foreach ($taskStatuses as $status)
-                                    <option value="{{ $status }}">{{ $taskStatusMeta[$status]['label'] }}</option>
+                                    @if (! in_array($status, \App\Models\Task::inactiveStatuses(), true))
+                                        <option value="{{ $status }}">{{ $taskStatusMeta[$status]['label'] }}</option>
+                                    @endif
                                 @endforeach
                             </select>
                         </div>
@@ -628,6 +645,18 @@
                                     <option value="{{ $priority }}" @selected(old('priority', 'normal') === $priority)>{{ $taskPriorityMeta[$priority]['label'] }}</option>
                                 @endforeach
                             </select>
+                        </div>
+
+                        <div>
+                            <label class="field-label" for="task-personal-priority">Orden para el responsable</label>
+                            <input id="task-personal-priority" type="number" min="1" max="999" name="personal_priority" class="field" value="{{ old('personal_priority') }}" placeholder="1, 2, 3…">
+                            <p class="mt-1 text-xs text-slate-500">Es independiente para cada colaborador.</p>
+                        </div>
+
+                        <div class="lg:col-span-2">
+                            <label class="field-label" for="task-blocked-reason">Motivo del bloqueo</label>
+                            <textarea id="task-blocked-reason" name="blocked_reason" rows="2" class="field" placeholder="Obligatorio si la tarea inicia bloqueada">{{ old('blocked_reason') }}</textarea>
+                            <x-input-error :messages="$errors->get('blocked_reason')" class="mt-2" />
                         </div>
 
                         <div class="lg:col-span-2">
@@ -654,6 +683,7 @@ Mandar a cliente"
                 </div>
             </div>
         </div>
+        @endif
         <div class="mt-6">
             @include('activity._timeline', ['recentActivity' => $recentActivity, 'project' => $project])
         </div>

@@ -28,7 +28,7 @@
                     'today'       => ['label' => 'Hoy', 'description' => \App\Models\Task::formatEstimatedMinutes($todayEstimatedMinutes).' planeadas'],
                     'upcoming'    => ['label' => 'Próximas', 'description' => 'Planeadas después de hoy'],
                     'unscheduled' => ['label' => 'Sin fecha de trabajo', 'description' => 'Tienen responsable pero no día asignado'],
-                    'done'        => ['label' => 'Listas', 'description' => 'Tareas ya cerradas'],
+                    'done'        => ['label' => 'Entregadas y finalizadas', 'description' => 'Fuera de la carga activa'],
                 ];
             @endphp
 
@@ -44,7 +44,7 @@
                         <div class="space-y-3">
                             @foreach ($sections[$sectionKey] as $task)
                                 @php
-                                    $isOverdue = $task->status !== 'done' && $task->due_at?->isPast();
+                                    $isOverdue = ! in_array($task->status, \App\Models\Task::inactiveStatuses(), true) && $task->due_at?->isPast();
                                     $subtaskProgress = $task->subtasks_count > 0
                                         ? (int) round(($task->completed_subtasks_count / $task->subtasks_count) * 100)
                                         : 0;
@@ -72,6 +72,14 @@
                                                 <span class="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs font-semibold text-slate-600">
                                                     {{ $taskPriorityMeta[$task->priority]['label'] }}
                                                 </span>
+
+                                                @if ($task->personal_priority)
+                                                    <span class="rounded-full bg-slate-950 px-2.5 py-1 text-xs font-bold text-white">Orden #{{ $task->personal_priority }}</span>
+                                                @endif
+
+                                                @if ($task->status === 'blocked' && $task->blocked_reason)
+                                                    <span class="w-full rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs normal-case tracking-normal text-rose-800">{{ $task->blocked_reason }}</span>
+                                                @endif
 
                                                 <span class="rounded-full border px-2.5 py-1 text-xs font-semibold
                                                     {{ $isOverdue
@@ -104,7 +112,7 @@
                                         >Ver tablero →</a>
                                     </div>
 
-                                    @if ($task->status !== 'done')
+                                    @if (! in_array($task->status, \App\Models\Task::inactiveStatuses(), true))
                                         <form method="POST" action="{{ route('tasks.update-schedule', $task) }}" class="mt-4" onclick="event.stopPropagation()">
                                             @csrf
                                             @method('PATCH')

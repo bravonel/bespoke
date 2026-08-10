@@ -16,13 +16,19 @@ class Task extends Model
         'assigned_to',
         'title',
         'description',
+        'blocked_reason',
+        'return_reason',
         'status',
         'priority',
+        'personal_priority',
         'sort_order',
         'planned_for',
         'estimated_minutes',
         'due_at',
         'completed_at',
+        'started_at',
+        'delivered_at',
+        'finalized_at',
     ];
 
     protected function casts(): array
@@ -32,7 +38,11 @@ class Task extends Model
             'planned_for' => 'date',
             'estimated_minutes' => 'integer',
             'completed_at' => 'datetime',
+            'started_at' => 'datetime',
+            'delivered_at' => 'datetime',
+            'finalized_at' => 'datetime',
             'sort_order' => 'integer',
+            'personal_priority' => 'integer',
         ];
     }
 
@@ -49,6 +59,11 @@ class Task extends Model
     public function subtasks(): HasMany
     {
         return $this->hasMany(Subtask::class);
+    }
+
+    public function comments(): HasMany
+    {
+        return $this->hasMany(TaskComment::class);
     }
 
     public static function statusMeta(): array
@@ -68,7 +83,11 @@ class Task extends Model
             ],
             'done' => [
                 'label' => 'Entregado',
-                'description' => 'Lo ya resuelto o entregado.',
+                'description' => 'Listo para revisión interna o entrega al cliente.',
+            ],
+            'finalized' => [
+                'label' => 'Finalizado',
+                'description' => 'Aprobado y entregado al cliente; ya no requiere trabajo.',
             ],
         ];
     }
@@ -90,6 +109,21 @@ class Task extends Model
     public static function priorityOptions(): array
     {
         return array_keys(static::priorityMeta());
+    }
+
+    public static function closedStatuses(): array
+    {
+        return ['finalized'];
+    }
+
+    public static function inactiveStatuses(): array
+    {
+        return ['done', 'finalized'];
+    }
+
+    public function isClosed(): bool
+    {
+        return in_array($this->status, static::closedStatuses(), true);
     }
 
     public static function formatEstimatedMinutes(?int $minutes): string

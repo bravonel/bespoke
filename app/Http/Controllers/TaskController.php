@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
+use App\Services\Access\OperationalAccess;
 use App\Services\Activity\ActivityFeed;
+use App\Services\Tasks\TaskWorkflow;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -14,8 +16,9 @@ use Illuminate\Validation\Rule;
 
 class TaskController extends Controller
 {
-    public function show(Request $request, Task $task, ActivityFeed $activity): View
+    public function show(Request $request, Task $task, ActivityFeed $activity, OperationalAccess $access): View
     {
+        abort_unless($access->canViewTask($request->user(), $task), 403);
         $task->load([
             'project.client',
             'project.brand',
@@ -24,6 +27,10 @@ class TaskController extends Controller
             'subtasks' => fn ($query) => $query
                 ->orderBy('sort_order')
                 ->orderBy('id'),
+            'comments' => fn ($query) => $query
+                ->with('user')
+                ->latest()
+                ->limit(30),
         ])->loadCount('subtasks')
             ->loadCount([
                 'subtasks as completed_subtasks_count' => fn ($query) => $query
@@ -45,6 +52,9 @@ class TaskController extends Controller
                 ->orderBy('name')
                 ->get(),
             'recentActivity' => $activity->forTask($task),
+            'canManageTask' => $access->canManageTask($request->user(), $task),
+            'canOperateTask' => $access->canOperateTask($request->user(), $task),
+            'canCommentTask' => true,
         ];
 
         if ($request->hasHeader('X-Drawer')) {
@@ -54,16 +64,19 @@ class TaskController extends Controller
         return view('tasks.show', $viewData);
     }
 
-    public function update(Request $request, Task $task): RedirectResponse
+    public function update(Request $request, Task $task, OperationalAccess $access): RedirectResponse
     {
+        abort_unless($access->canManageTask($request->user(), $task), 403);
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+            'blocked_reason' => ['nullable', 'string', 'max:2000'],
             'assigned_to' => ['nullable', 'exists:users,id'],
             'planned_for' => ['nullable', 'date'],
             'estimated_hours' => ['nullable', 'numeric', 'min:0', 'max:24'],
             'due_at' => ['nullable', 'date'],
             'priority' => ['required', Rule::in(Task::priorityOptions())],
+            'personal_priority' => ['nullable', 'integer', 'min:1', 'max:999'],
         ]);
 
         $task->update($this->taskAttributes($validated));
@@ -71,34 +84,42 @@ class TaskController extends Controller
         return to_route('projects.show', $task->project)->with('status', 'Tarea actualizada.');
     }
 
-    public function destroy(Task $task): RedirectResponse
+    public function destroy(Request $request, Task $task, OperationalAccess $access): RedirectResponse
     {
+        abort_unless($access->canManageTask($request->user(), $task), 403);
         $project = $task->project;
         $task->delete();
 
         return to_route('projects.show', $project)->with('status', 'Tarea eliminada.');
     }
 
-    public function store(Request $request, Project $project): RedirectResponse
+    public function store(Request $request, Project $project, OperationalAccess $access): RedirectResponse
     {
+        abort_unless($access->canManageProject($request->user(), $project), 403);
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+            'blocked_reason' => ['nullable', 'string', 'max:2000'],
             'assigned_to' => ['nullable', 'exists:users,id'],
-            'status' => ['required', Rule::in(Task::statusOptions())],
+            'status' => ['required', Rule::in(['todo', 'in_progress', 'blocked'])],
             'priority' => ['required', Rule::in(Task::priorityOptions())],
+            'personal_priority' => ['nullable', 'integer', 'min:1', 'max:999'],
             'planned_for' => ['nullable', 'date'],
             'estimated_hours' => ['nullable', 'numeric', 'min:0', 'max:24'],
             'due_at' => ['nullable', 'date'],
             'subtasks' => ['nullable', 'string'],
         ]);
 
+        $initialAttributes = collect($this->taskAttributes($validated))
+            ->except(['subtasks', 'blocked_reason', 'status'])
+            ->all();
+
         $task = $project->tasks()->create([
-            ...collect($this->taskAttributes($validated))->except('subtasks')->all(),
+            ...$initialAttributes,
+            'status' => 'todo',
             'sort_order' => (int) $project->tasks()
                 ->where('status', $validated['status'])
                 ->max('sort_order') + 1,
-            'completed_at' => $validated['status'] === 'done' ? now() : null,
         ]);
 
         collect(preg_split('/\r\n|\r|\n/', $validated['subtasks'] ?? ''))
@@ -110,11 +131,16 @@ class TaskController extends Controller
                 'sort_order' => $index,
             ]));
 
+        if ($validated['status'] !== 'todo') {
+            $task->update(app(TaskWorkflow::class)->transition($task, $validated['status'], $validated));
+        }
+
         return to_route('projects.show', $project)->with('status', 'Tarea agregada.');
     }
 
-    public function updateSchedule(Request $request, Task $task): RedirectResponse
+    public function updateSchedule(Request $request, Task $task, OperationalAccess $access): RedirectResponse
     {
+        abort_unless($access->canManageTask($request->user(), $task), 403);
         $validated = $request->validate([
             'planned_for' => ['required', 'date'],
         ]);
@@ -124,17 +150,18 @@ class TaskController extends Controller
         return back()->with('status', 'Día de carga actualizado.');
     }
 
-    public function updateStatus(Request $request, Task $task): RedirectResponse
+    public function updateStatus(Request $request, Task $task, TaskWorkflow $workflow, OperationalAccess $access): RedirectResponse
     {
+        abort_unless($access->canOperateTask($request->user(), $task), 403);
         $validated = $request->validate([
             'status' => ['required', Rule::in(Task::statusOptions())],
+            'blocked_reason' => ['nullable', 'string', 'max:2000'],
+            'return_reason' => ['nullable', 'string', 'max:2000'],
         ]);
 
         $nextStatus = $validated['status'];
-        $attributes = [
-            'status' => $validated['status'],
-            'completed_at' => $validated['status'] === 'done' ? now() : null,
-        ];
+        abort_if($nextStatus === 'finalized' && ! $access->canManageTask($request->user(), $task), 403);
+        $attributes = $workflow->transition($task, $nextStatus, $validated);
 
         if ($task->status !== $nextStatus) {
             $attributes['sort_order'] = (int) Task::query()
@@ -144,12 +171,14 @@ class TaskController extends Controller
         }
 
         $task->update($attributes);
+        $workflow->syncProjectCompletion($task);
 
         return to_route('projects.show', $task->project)->with('status', 'Estado de tarea actualizado.');
     }
 
-    public function move(Request $request, Task $task): JsonResponse
+    public function move(Request $request, Task $task, TaskWorkflow $workflow, OperationalAccess $access): JsonResponse
     {
+        abort_unless($access->canOperateTask($request->user(), $task), 403);
         $validated = $request->validate([
             'status' => ['required', Rule::in(Task::statusOptions())],
             'ordered_ids' => ['required', 'array', 'min:1'],
@@ -157,15 +186,34 @@ class TaskController extends Controller
             'source_status' => ['nullable', Rule::in(Task::statusOptions())],
             'source_ordered_ids' => ['nullable', 'array'],
             'source_ordered_ids.*' => ['required', 'integer'],
+            'blocked_reason' => ['nullable', 'string', 'max:2000'],
+            'return_reason' => ['nullable', 'string', 'max:2000'],
         ]);
 
         $projectId = $task->project_id;
+        abort_if($validated['status'] === 'finalized' && ! $access->canManageTask($request->user(), $task), 403);
+
+        $transition = $workflow->transition($task, $validated['status'], $validated);
+
+        if (! $access->canManageTask($request->user(), $task)) {
+            $targetIndex = array_search($task->id, array_map('intval', $validated['ordered_ids']), true);
+            $task->update([
+                ...$transition,
+                'sort_order' => $targetIndex === false ? $task->sort_order : $targetIndex,
+            ]);
+            $workflow->syncProjectCompletion($task);
+
+            return response()->json(['message' => 'Tablero actualizado.']);
+        }
 
         $this->syncColumn(
             $projectId,
             $validated['status'],
             $validated['ordered_ids'],
+            $task->id,
+            $transition,
         );
+        $workflow->syncProjectCompletion($task->refresh());
 
         if (
             filled($validated['source_status'] ?? null)
@@ -183,7 +231,7 @@ class TaskController extends Controller
         ]);
     }
 
-    private function syncColumn(int $projectId, string $status, array $taskIds): void
+    private function syncColumn(int $projectId, string $status, array $taskIds, ?int $transitioningTaskId = null, array $transition = []): void
     {
         $tasks = Task::query()
             ->where('project_id', $projectId)
@@ -198,13 +246,16 @@ class TaskController extends Controller
                 continue;
             }
 
-            $task->update([
+            $attributes = [
                 'status' => $status,
                 'sort_order' => $index,
-                'completed_at' => $status === 'done'
-                    ? ($task->completed_at ?? now())
-                    : null,
-            ]);
+            ];
+
+            if ($task->id === $transitioningTaskId) {
+                $attributes = [...$attributes, ...$transition];
+            }
+
+            $task->update($attributes);
         }
     }
 

@@ -11,6 +11,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MyTasksController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\SubtaskController;
+use App\Http\Controllers\TaskCommentController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\UserCapacityController;
 use App\Http\Controllers\WhatsAppWebhookController;
@@ -70,6 +71,7 @@ Route::middleware(['auth', TrackUserActivity::class])->group(function (): void {
     Route::patch('tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('tasks.update-status');
     Route::patch('tasks/{task}/move', [TaskController::class, 'move'])->name('tasks.move');
     Route::post('tasks/{task}/subtasks', [SubtaskController::class, 'store'])->name('tasks.subtasks.store');
+    Route::post('tasks/{task}/comments', [TaskCommentController::class, 'store'])->name('tasks.comments.store');
     Route::patch('subtasks/{subtask}', [SubtaskController::class, 'update'])->name('subtasks.update');
 });
 

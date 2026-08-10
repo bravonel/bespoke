@@ -4,14 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Models\Subtask;
 use App\Models\Task;
+use App\Services\Access\OperationalAccess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class SubtaskController extends Controller
 {
-    public function store(Request $request, Task $task): RedirectResponse
+    public function store(Request $request, Task $task, OperationalAccess $access): RedirectResponse
     {
+        abort_unless($access->canManageTask($request->user(), $task), 403);
         $validated = $request->validate([
             'subtask_title' => ['required', 'string', 'max:255'],
         ]);
@@ -24,8 +26,9 @@ class SubtaskController extends Controller
         return to_route('projects.show', $task->project)->with('status', 'Subtarea agregada.');
     }
 
-    public function update(Request $request, Subtask $subtask): JsonResponse|RedirectResponse
+    public function update(Request $request, Subtask $subtask, OperationalAccess $access): JsonResponse|RedirectResponse
     {
+        abort_unless($access->canOperateTask($request->user(), $subtask->task), 403);
         $validated = $request->validate([
             'is_done' => ['required', 'boolean'],
         ]);

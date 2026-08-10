@@ -10,6 +10,7 @@ use App\Models\ProjectMember;
 use App\Models\ProjectWorkload;
 use App\Models\Subtask;
 use App\Models\Task;
+use App\Models\TaskComment;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
@@ -215,6 +216,7 @@ class AuditLogger
             $model instanceof Task,
             $model instanceof ProjectMember,
             $model instanceof ProjectWorkload => $model->project_id,
+            $model instanceof TaskComment => $model->task?->project_id,
             $model instanceof Subtask => $model->task?->project_id,
             $model instanceof AiAssistantMessage && $model->context_type === Project::class => $model->context_id,
             default => $model->getAttribute('project_id'),
@@ -229,6 +231,7 @@ class AuditLogger
             $model instanceof Task,
             $model instanceof ProjectMember,
             $model instanceof ProjectWorkload => $model->project?->client_id,
+            $model instanceof TaskComment => $model->task?->project?->client_id,
             $model instanceof Subtask => $model->task?->project?->client_id,
             $model instanceof AiAssistantMessage && $model->context_type === Project::class => Project::query()->whereKey($model->context_id)->value('client_id'),
             default => $model->getAttribute('client_id'),

@@ -8,7 +8,9 @@ use App\Models\Project;
 use App\Models\ProjectWorkload;
 use App\Models\Task;
 use App\Models\User;
+use App\Services\Access\OperationalAccess;
 use App\Services\Activity\ActivityFeed;
+use App\Services\Tasks\TaskWorkflow;
 use App\Support\OperationalLabels;
 use App\Support\SimpleXlsxWriter;
 use Illuminate\Contracts\View\View;
@@ -23,9 +25,9 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ProjectController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request, OperationalAccess $access): View
     {
-        $query = Project::query()
+        $query = $access->projects($request->user())
             ->with(['client', 'brand', 'owner'])
             ->withCount('tasks');
 
@@ -50,9 +52,9 @@ class ProjectController extends Controller
         ]);
     }
 
-    public function export(Request $request): BinaryFileResponse
+    public function export(Request $request, OperationalAccess $access): BinaryFileResponse
     {
-        $query = Project::query()->with(['client', 'brand', 'owner'])->withCount('tasks');
+        $query = $access->projects($request->user())->with(['client', 'brand', 'owner'])->withCount('tasks');
         $this->applyProjectFilters($query, $this->projectFilters($request));
 
         $rows = [[
@@ -86,8 +88,10 @@ class ProjectController extends Controller
             ->deleteFileAfterSend(true);
     }
 
-    public function create(): View
+    public function create(Request $request, OperationalAccess $access): View
     {
+        abort_unless($access->canCreateProjects($request->user()), 403);
+
         return view('projects.create', [
             'clients' => Client::query()->orderBy('name')->get(),
             'brands' => Brand::query()->with('client')->orderBy('name')->get(),
@@ -101,8 +105,9 @@ class ProjectController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, OperationalAccess $access): RedirectResponse
     {
+        abort_unless($access->canCreateProjects($request->user()), 403);
         $this->normalizeProjectInput($request);
 
         $validated = $request->validate([
@@ -135,6 +140,9 @@ class ProjectController extends Controller
             'workloads.*.estimated_hours' => ['nullable', 'numeric', 'min:0', 'max:24'],
             'workloads.*.notes' => ['nullable', 'string', 'max:255'],
             'workloads.*.status' => ['nullable', Rule::in(Task::statusOptions())],
+            'workloads.*.personal_priority' => ['nullable', 'integer', 'min:1', 'max:999'],
+            'workloads.*.blocked_reason' => ['nullable', 'string', 'max:2000'],
+            'workloads.*.return_reason' => ['nullable', 'string', 'max:2000'],
         ]);
 
         $project = Project::create([
@@ -148,15 +156,17 @@ class ProjectController extends Controller
         return to_route('projects.show', $project)->with('status', 'Proyecto creado.');
     }
 
-    public function destroy(Project $project): RedirectResponse
+    public function destroy(Request $request, Project $project, OperationalAccess $access): RedirectResponse
     {
+        abort_unless($access->canManageProject($request->user(), $project), 403);
         $project->delete();
 
         return to_route('projects.index')->with('status', 'Proyecto eliminado.');
     }
 
-    public function update(Request $request, Project $project): RedirectResponse
+    public function update(Request $request, Project $project, OperationalAccess $access): RedirectResponse
     {
+        abort_unless($access->canManageProject($request->user(), $project), 403);
         $this->normalizeProjectInput($request);
 
         $validated = $request->validate([
@@ -189,6 +199,9 @@ class ProjectController extends Controller
             'workloads.*.estimated_hours' => ['nullable', 'numeric', 'min:0', 'max:24'],
             'workloads.*.notes' => ['nullable', 'string', 'max:255'],
             'workloads.*.status' => ['nullable', Rule::in(Task::statusOptions())],
+            'workloads.*.personal_priority' => ['nullable', 'integer', 'min:1', 'max:999'],
+            'workloads.*.blocked_reason' => ['nullable', 'string', 'max:2000'],
+            'workloads.*.return_reason' => ['nullable', 'string', 'max:2000'],
         ]);
 
         $project->update(collect($validated)->except(['workloads', 'project_type_other'])->all());
@@ -197,8 +210,9 @@ class ProjectController extends Controller
         return to_route('projects.show', $project)->with('status', 'Proyecto actualizado.');
     }
 
-    public function show(Project $project, ActivityFeed $activity): View
+    public function show(Request $request, Project $project, ActivityFeed $activity, OperationalAccess $access): View
     {
+        abort_unless($access->canViewProject($request->user(), $project), 403);
         $project->load([
             'client',
             'brand',
@@ -228,19 +242,20 @@ class ProjectController extends Controller
                     ->values(),
             ]);
 
-        $doneTasks = $project->tasks->where('status', 'done')->count();
+        $deliveredTasks = $project->tasks->where('status', 'done')->count();
+        $finalizedTasks = $project->tasks->where('status', 'finalized')->count();
         $openSubtasks = $project->tasks->sum(
             fn (Task $task) => $task->subtasks_count - $task->completed_subtasks_count
         );
         $overdueTasks = $project->tasks
-            ->filter(fn (Task $task) => $task->status !== 'done' && $task->due_at?->isPast())
+            ->filter(fn (Task $task) => ! in_array($task->status, Task::inactiveStatuses(), true) && $task->due_at?->isPast())
             ->count();
         $plannedMinutes = (int) $project->tasks
-            ->whereNotIn('status', ['done'])
+            ->whereNotIn('status', Task::inactiveStatuses())
             ->sum(fn (Task $task) => $task->estimated_minutes ?? 0);
         $completionRate = $project->tasks->isEmpty()
             ? 0
-            : (int) round(($doneTasks / $project->tasks->count()) * 100);
+            : (int) round((($deliveredTasks + $finalizedTasks) / $project->tasks->count()) * 100);
         $workloadRoles = ProjectWorkload::roleOptions();
         $collaboratorLoadRows = $this->collaboratorLoadRows($project, $workloadRoles);
 
@@ -262,15 +277,17 @@ class ProjectController extends Controller
             'workloadRoles' => $workloadRoles,
             'collaboratorLoadRows' => $collaboratorLoadRows,
             'recentActivity' => $activity->forProject($project),
+            'canManageProject' => $access->canManageProject($request->user(), $project),
             'boardSummary' => [
                 'total_tasks' => $project->tasks->count(),
-                'done_tasks' => $doneTasks,
+                'done_tasks' => $deliveredTasks,
+                'finalized_tasks' => $finalizedTasks,
                 'open_subtasks' => $openSubtasks,
                 'overdue_tasks' => $overdueTasks,
                 'unassigned_tasks' => $project->tasks->whereNull('assigned_to')->count(),
                 'planned_minutes' => $plannedMinutes,
                 'missing_estimates' => $project->tasks
-                    ->whereNotIn('status', ['done'])
+                    ->whereNotIn('status', Task::inactiveStatuses())
                     ->whereNull('estimated_minutes')
                     ->count(),
                 'completion_rate' => $completionRate,
@@ -281,7 +298,7 @@ class ProjectController extends Controller
     private function collaboratorLoadRows(Project $project, array $workloadRoles): Collection
     {
         $taskRows = $project->tasks
-            ->where('status', '!=', 'done')
+            ->whereNotIn('status', Task::inactiveStatuses())
             ->map(fn (Task $task) => [
                 'kind' => 'task',
                 'user_id' => $task->assigned_to,
@@ -366,6 +383,7 @@ class ProjectController extends Controller
             $estimatedMinutes = $this->estimatedMinutes($row['estimated_hours'] ?? null);
             $notes = filled($row['notes'] ?? null) ? trim((string) $row['notes']) : null;
             $taskStatus = $row['status'] ?? 'todo';
+            $personalPriority = filled($row['personal_priority'] ?? null) ? (int) $row['personal_priority'] : null;
             $existing = $existingByRole->get($role);
 
             if ($userId === null && $workDate === null && $estimatedMinutes === null && $notes === null) {
@@ -392,17 +410,28 @@ class ProjectController extends Controller
             $task = $workload->task ?: new Task([
                 'project_id' => $project->id,
                 'priority' => 'normal',
+                'status' => 'todo',
                 'sort_order' => $nextSortOrder++,
             ]);
+            $previousStatus = $task->status ?: 'todo';
             $task->fill([
                 'assigned_to' => $userId,
                 'title' => $notes,
-                'status' => $taskStatus,
+                'status' => $previousStatus,
+                'personal_priority' => $personalPriority,
                 'planned_for' => $workDate,
                 'estimated_minutes' => $estimatedMinutes,
                 'due_at' => $project->due_at,
-                'completed_at' => $taskStatus === 'done' ? ($task->completed_at ?? now()) : null,
             ])->save();
+
+            if ($previousStatus !== $taskStatus) {
+                $transitionContext = [
+                    ...$row,
+                    'blocked_reason' => $row['blocked_reason'] ?? $notes,
+                ];
+                $task->update(app(TaskWorkflow::class)->transition($task, $taskStatus, $transitionContext));
+                app(TaskWorkflow::class)->syncProjectCompletion($task);
+            }
             $workload->update(['task_id' => $task->id]);
         }
     }

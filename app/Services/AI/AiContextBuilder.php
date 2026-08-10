@@ -106,7 +106,7 @@ class AiContextBuilder
     private function projectsDueSoon(User $user): Collection
     {
         return $this->projectQuery($user)
-            ->whereNotIn('status', ['done'])
+            ->whereNotIn('status', Task::closedStatuses())
             ->orderByRaw('due_at is null')
             ->orderBy('due_at')
             ->limit(8)
@@ -187,7 +187,7 @@ class AiContextBuilder
                     'actividades' => $rows->count(),
                     'bloqueadas' => $rows->where('status', 'blocked')->count(),
                     'vencidas' => $rows
-                        ->filter(fn (array $row) => $row['due_at'] && $row['status'] !== 'done' && $row['due_at']->isPast())
+                        ->filter(fn (array $row) => $row['due_at'] && ! in_array($row['status'], Task::inactiveStatuses(), true) && $row['due_at']->isPast())
                         ->count(),
                     'sin_horas' => $rows->where('missing_estimate', true)->count(),
                     'ejemplos' => $rows
@@ -248,7 +248,7 @@ class AiContextBuilder
             ->withCount([
                 'tasks',
                 'tasks as open_tasks_count' => fn ($query) => $query->whereIn('status', self::OPEN_TASK_STATUSES),
-                'tasks as done_tasks_count' => fn ($query) => $query->where('status', 'done'),
+                'tasks as done_tasks_count' => fn ($query) => $query->whereIn('status', Task::inactiveStatuses()),
                 'tasks as overdue_tasks_count' => fn ($query) => $query
                     ->whereIn('status', self::OPEN_TASK_STATUSES)
                     ->whereDate('due_at', '<', today()->toDateString()),

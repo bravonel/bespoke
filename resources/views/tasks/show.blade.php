@@ -32,7 +32,7 @@
             </div>
             <div class="metric-card">
                 <div class="metric-label">Prioridad</div>
-                <div class="mt-3 text-lg font-semibold text-slate-950">{{ $taskPriorityMeta[$task->priority]['label'] }}</div>
+                <div class="mt-3 text-lg font-semibold text-slate-950">{{ $task->personal_priority ? '#'.$task->personal_priority.' · ' : '' }}{{ $taskPriorityMeta[$task->priority]['label'] }}</div>
             </div>
             <div class="metric-card">
                 <div class="metric-label">Carga diaria</div>
@@ -94,6 +94,7 @@
                         <p class="mt-2 text-sm text-slate-500">Aquí puedes cerrar subtareas y ajustar el estado sin sobrecargar la tarjeta del tablero.</p>
                     </div>
 
+                    @if ($canOperateTask)
                     <form method="POST" action="{{ route('tasks.update-status', $task) }}" class="grid w-full gap-3 sm:max-w-sm">
                         @csrf
                         @method('PATCH')
@@ -104,9 +105,21 @@
                             @endforeach
                         </select>
 
+                        <input name="blocked_reason" class="field mt-0" placeholder="Motivo si bloqueas">
+                        <input name="return_reason" class="field mt-0" placeholder="Qué debe corregirse si devuelves">
+
                         <button class="button-secondary">Guardar estado</button>
                     </form>
+                    @endif
                 </div>
+
+                @if ($task->status === 'blocked' && $task->blocked_reason)
+                    <div class="mt-5 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm leading-6 text-rose-900"><strong>Bloqueo:</strong> {{ $task->blocked_reason }}</div>
+                @endif
+
+                @if ($task->return_reason)
+                    <div class="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950"><strong>Última devolución:</strong> {{ $task->return_reason }}</div>
+                @endif
 
                 <div class="mt-7 rounded-3xl border border-stone-200 bg-stone-50/80 p-5">
                     <div class="flex items-center justify-between gap-3">
@@ -128,6 +141,7 @@
 
                     <div class="mt-4 space-y-3">
                         @forelse ($task->subtasks as $subtask)
+                            @if ($canOperateTask)
                             <form method="POST" action="{{ route('subtasks.update', $subtask) }}" class="flex items-start gap-3 rounded-2xl border border-stone-200 bg-white px-4 py-3">
                                 @csrf
                                 @method('PATCH')
@@ -146,6 +160,12 @@
                                     {{ $subtask->title }}
                                 </span>
                             </form>
+                            @else
+                                <div class="flex items-start gap-3 rounded-2xl border border-stone-200 bg-white px-4 py-3">
+                                    <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[11px] font-bold {{ $subtask->is_done ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-stone-300 text-transparent' }}">✓</span>
+                                    <span class="text-sm leading-6 {{ $subtask->is_done ? 'text-slate-400 line-through' : 'text-slate-700' }}">{{ $subtask->title }}</span>
+                                </div>
+                            @endif
                         @empty
                             <div class="rounded-2xl border border-dashed border-stone-300 bg-white px-4 py-5 text-sm text-slate-500">
                                 Esta tarea aún no tiene subtareas.
@@ -153,6 +173,7 @@
                         @endforelse
                     </div>
 
+                    @if ($canManageTask)
                     <form method="POST" action="{{ route('tasks.subtasks.store', $task) }}" class="mt-4 flex flex-col gap-2 sm:flex-row">
                         @csrf
 
@@ -166,9 +187,42 @@
 
                         <button class="button-secondary shrink-0 sm:min-w-[8rem]">Agregar</button>
                     </form>
+                    @endif
                 </div>
             </section>
         </div>
+
+        <section class="panel p-7 xl:p-8">
+            <div class="flex items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-lg font-semibold text-slate-950">Conversación de la tarea</h2>
+                    <p class="mt-1 text-sm text-slate-500">Decisiones, instrucciones y seguimiento en el mismo contexto.</p>
+                </div>
+                <span class="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-slate-600">{{ $task->comments->count() }} recientes</span>
+            </div>
+
+            <div class="mt-6 grid gap-3 lg:grid-cols-2">
+                @forelse ($task->comments as $comment)
+                    <article class="rounded-2xl border border-stone-200 bg-white px-4 py-4">
+                        <div class="flex items-center justify-between gap-3 text-xs">
+                            <strong class="text-slate-800">{{ $comment->user->name }}</strong>
+                            <time class="text-slate-400">{{ $comment->created_at->diffForHumans() }}</time>
+                        </div>
+                        <p class="mt-2 whitespace-pre-line text-sm leading-6 text-slate-700">{{ $comment->body }}</p>
+                    </article>
+                @empty
+                    <p class="rounded-2xl border border-dashed border-stone-300 px-4 py-5 text-sm text-slate-500">Todavía no hay comentarios.</p>
+                @endforelse
+            </div>
+
+            @if ($canCommentTask)
+                <form method="POST" action="{{ route('tasks.comments.store', $task) }}" class="mt-6 grid gap-3">
+                    @csrf
+                    <textarea name="body" rows="3" class="field" placeholder="Deja una actualización, instrucción o decisión…" required></textarea>
+                    <div class="flex justify-end"><button class="button-secondary">Comentar</button></div>
+                </form>
+            @endif
+        </section>
         <div class="mt-6">
             @include('activity._timeline', ['recentActivity' => $recentActivity])
         </div>

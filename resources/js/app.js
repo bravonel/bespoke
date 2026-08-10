@@ -287,10 +287,32 @@ const initializeTaskBoards = () => {
         };
 
         const syncBoard = async (card, targetColumn) => {
+            const sourceStatus = sourceColumn?.dataset.status;
+            const targetStatus = targetColumn.dataset.status;
             const payload = {
-                status: targetColumn.dataset.status,
+                status: targetStatus,
                 ordered_ids: getCards(targetColumn).map((taskCard) => Number(taskCard.dataset.taskId)),
             };
+
+            if (targetStatus === 'blocked' && sourceStatus !== 'blocked') {
+                const reason = window.prompt('¿Qué impide avanzar y quién debe destrabarlo?');
+
+                if (!reason?.trim()) {
+                    throw new Error('El motivo de bloqueo es obligatorio.');
+                }
+
+                payload.blocked_reason = reason.trim();
+            }
+
+            if (['done', 'finalized'].includes(sourceStatus) && !['done', 'finalized'].includes(targetStatus)) {
+                const reason = window.prompt('¿Qué debe corregirse para devolver esta tarea?');
+
+                if (!reason?.trim()) {
+                    throw new Error('El motivo de devolución es obligatorio.');
+                }
+
+                payload.return_reason = reason.trim();
+            }
 
             if (sourceColumn && sourceColumn !== targetColumn) {
                 payload.source_status = sourceColumn.dataset.status;
@@ -308,7 +330,9 @@ const initializeTaskBoards = () => {
             });
 
             if (!response.ok) {
-                throw new Error('No se pudo mover la tarjeta.');
+                const responsePayload = await response.json().catch(() => ({}));
+                const firstError = Object.values(responsePayload.errors ?? {}).flat()[0];
+                throw new Error(firstError || responsePayload.message || 'No se pudo mover la tarjeta.');
             }
         };
 
@@ -346,6 +370,7 @@ const initializeTaskBoards = () => {
                 try {
                     await syncBoard(draggedCard, targetColumn);
                 } catch (error) {
+                    window.alert(error.message);
                     window.location.reload();
                 } finally {
                     columns.forEach((item) => item.classList.remove('is-drop-target'));

@@ -9,6 +9,7 @@ use App\Models\ProjectMember;
 use App\Models\ProjectWorkload;
 use App\Models\Subtask;
 use App\Models\Task;
+use App\Models\TaskComment;
 use App\Services\Audit\AuditLogger;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
@@ -117,6 +118,7 @@ class DomainActivityObserver
             $model instanceof Project => 'project',
             $model instanceof Task => 'task',
             $model instanceof Subtask => 'subtask',
+            $model instanceof TaskComment => 'task.comment',
             default => 'record',
         };
     }
