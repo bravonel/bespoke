@@ -176,4 +176,43 @@
     .modal-footer {
         @apply flex justify-end gap-3 border-t border-stone-200 px-7 py-5;
     }
+
+    .qr-signal-grid {
+        background-image:
+            linear-gradient(rgba(255,255,255,.055) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,.055) 1px, transparent 1px);
+        background-size: 22px 22px;
+    }
+
+    .qr-preview-shell {
+        @apply relative mx-auto flex w-full max-w-[25rem] flex-col items-center bg-white p-5 shadow-[0_30px_80px_-32px_rgba(15,23,42,.55)];
+    }
+
+    .qr-preview-shell[data-frame="none"] {
+        @apply rounded-none bg-transparent p-0 shadow-none;
+    }
+
+    .qr-preview-shell[data-frame="soft"] {
+        @apply rounded-[2.25rem];
+    }
+
+    .qr-preview-shell[data-frame="ticket"] {
+        border-radius: 1.25rem;
+        clip-path: polygon(0 0, 100% 0, 100% 45%, 96% 50%, 100% 55%, 100% 100%, 0 100%, 0 55%, 4% 50%, 0 45%);
+    }
+
+    .qr-canvas > canvas,
+    .qr-canvas > svg {
+        @apply h-auto max-w-full;
+    }
+
+    .qr-choice {
+        @apply flex cursor-pointer items-center justify-between rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-stone-300;
+    }
+
+    .qr-choice:has(input:checked) {
+        border-color: var(--brand-magenta);
+        box-shadow: 0 0 0 3px rgba(233, 30, 140, .09);
+        color: #be185d;
+    }
 }

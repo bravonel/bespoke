@@ -10,6 +10,8 @@ use App\Http\Controllers\CollaboratorController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MyTasksController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\QrCodeController;
+use App\Http\Controllers\QrRedirectController;
 use App\Http\Controllers\SubtaskController;
 use App\Http\Controllers\TaskCommentController;
 use App\Http\Controllers\TaskController;
@@ -22,6 +24,7 @@ Route::view('/', 'site-home')->name('welcome');
 
 Route::get('webhooks/whatsapp', [WhatsAppWebhookController::class, 'verify'])->name('webhooks.whatsapp.verify');
 Route::post('webhooks/whatsapp', [WhatsAppWebhookController::class, 'receive'])->name('webhooks.whatsapp.receive');
+Route::get('q/{slug}', QrRedirectController::class)->name('qr.redirect');
 
 Route::middleware(['auth', TrackUserActivity::class])->group(function (): void {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
@@ -54,6 +57,14 @@ Route::middleware(['auth', TrackUserActivity::class])->group(function (): void {
     Route::post('brands', [BrandController::class, 'store'])->name('brands.store');
     Route::patch('brands/{brand}', [BrandController::class, 'update'])->name('brands.update');
     Route::delete('brands/{brand}', [BrandController::class, 'destroy'])->name('brands.destroy');
+
+    Route::get('qr-codes', [QrCodeController::class, 'index'])->name('qr-codes.index');
+    Route::get('qr-codes/create', [QrCodeController::class, 'create'])->name('qr-codes.create');
+    Route::post('qr-codes', [QrCodeController::class, 'store'])->name('qr-codes.store');
+    Route::get('qr-codes/{qrCode}', [QrCodeController::class, 'show'])->name('qr-codes.show');
+    Route::patch('qr-codes/{qrCode}', [QrCodeController::class, 'update'])->name('qr-codes.update');
+    Route::delete('qr-codes/{qrCode}', [QrCodeController::class, 'destroy'])->name('qr-codes.destroy');
+    Route::get('qr-codes/{qrCode}/export', [QrCodeController::class, 'export'])->name('qr-codes.export');
 
     Route::get('projects', [ProjectController::class, 'index'])->name('projects.index');
     Route::get('projects-export', [ProjectController::class, 'export'])->name('projects.export');

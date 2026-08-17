@@ -29,7 +29,7 @@ new class extends Component
                 </div>
 
                 <!-- Navigation Links -->
-                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                <div class="hidden space-x-6 sm:-my-px sm:ms-8 sm:flex">
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" wire:navigate>
                         {{ __('Resumen') }}
                     </x-nav-link>
@@ -44,6 +44,10 @@ new class extends Component
 
                     <x-nav-link :href="route('projects.index')" :active="request()->routeIs('projects.*')" wire:navigate>
                         {{ __('Proyectos') }}
+                    </x-nav-link>
+
+                    <x-nav-link :href="route('qr-codes.index')" :active="request()->routeIs('qr-codes.*')" wire:navigate>
+                        {{ __('QR Studio') }}
                     </x-nav-link>
 
                     <x-nav-link :href="route('collaborators.index')" :active="request()->routeIs('collaborators.*')" wire:navigate>
@@ -119,6 +123,10 @@ new class extends Component
 
             <x-responsive-nav-link :href="route('projects.index')" :active="request()->routeIs('projects.*')" wire:navigate>
                 {{ __('Proyectos') }}
+            </x-responsive-nav-link>
+
+            <x-responsive-nav-link :href="route('qr-codes.index')" :active="request()->routeIs('qr-codes.*')" wire:navigate>
+                {{ __('QR Studio') }}
             </x-responsive-nav-link>
 
             <x-responsive-nav-link :href="route('collaborators.index')" :active="request()->routeIs('collaborators.*')" wire:navigate>

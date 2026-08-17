@@ -1,4 +1,87 @@
+import QRCodeStyling from 'qr-code-styling';
+
 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+
+window.qrDesigner = (initial = {}) => ({
+    state: {
+        foreground: initial.design?.foreground || '#161616',
+        background: initial.design?.background || '#FFFFFF',
+        dots: initial.design?.dots || 'rounded',
+        corners: initial.design?.corners || 'extra-rounded',
+        frame: initial.design?.frame || 'soft',
+        cta: initial.design?.cta || 'ESCANEA AQUÍ',
+    },
+    data: initial.url || `${window.location.origin}/q/preview`,
+    logo: initial.logo || null,
+    qr: null,
+    copied: false,
+    init() {
+        this.qr = new QRCodeStyling(this.options());
+        this.qr.append(this.$refs.canvas);
+        this.$watch('state', () => this.render());
+    },
+    options(size = 320) {
+        return {
+            width: size,
+            height: size,
+            type: 'svg',
+            data: this.data,
+            image: this.logo || undefined,
+            margin: 12,
+            qrOptions: { errorCorrectionLevel: 'H' },
+            imageOptions: { crossOrigin: 'anonymous', margin: 8, imageSize: 0.34, hideBackgroundDots: true },
+            dotsOptions: { color: this.state.foreground, type: this.state.dots },
+            backgroundOptions: { color: this.state.background },
+            cornersSquareOptions: { color: this.state.foreground, type: this.state.corners },
+            cornersDotOptions: { color: this.state.foreground, type: this.state.corners === 'dot' ? 'dot' : 'square' },
+        };
+    },
+    render() {
+        this.qr?.update(this.options());
+    },
+    loadLogo(event) {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            this.logo = reader.result;
+            this.render();
+        };
+        reader.readAsDataURL(file);
+    },
+    removeLogo() {
+        this.logo = null;
+        if (this.$refs.logoInput) this.$refs.logoInput.value = '';
+        this.render();
+    },
+    download(extension = 'png') {
+        this.qr?.download({ name: initial.filename || 'bespoke-qr', extension });
+    },
+    async copyUrl() {
+        await navigator.clipboard.writeText(this.data);
+        this.copied = true;
+        window.setTimeout(() => { this.copied = false; }, 1600);
+    },
+});
+
+window.qrMini = (config = {}) => ({
+    init() {
+        const qr = new QRCodeStyling({
+            width: 104,
+            height: 104,
+            type: 'svg',
+            data: config.url,
+            image: config.logo || undefined,
+            margin: 4,
+            qrOptions: { errorCorrectionLevel: 'H' },
+            imageOptions: { crossOrigin: 'anonymous', margin: 3, imageSize: 0.32, hideBackgroundDots: true },
+            dotsOptions: { color: config.design?.foreground || '#161616', type: config.design?.dots || 'rounded' },
+            backgroundOptions: { color: config.design?.background || '#FFFFFF' },
+            cornersSquareOptions: { color: config.design?.foreground || '#161616', type: config.design?.corners || 'extra-rounded' },
+        });
+        qr.append(this.$refs.canvas);
+    },
+});
 
 const activityTracker = (() => {
     const events = [];
