@@ -11,7 +11,7 @@
                 <div class="mt-3 flex items-center gap-3"><h1 class="page-title truncate">{{ $qrCode->name }}</h1><span class="shrink-0 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[.16em] {{ $qrCode->status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-stone-200 text-slate-500' }}">{{ ['active' => 'Activo', 'paused' => 'Pausado', 'archived' => 'Archivado'][$qrCode->status] }}</span></div>
                 <p class="mt-2 truncate text-sm text-slate-500">{{ $qrCode->client?->name ?: 'Sin cliente' }}{{ $qrCode->brand ? ' · '.$qrCode->brand->name : '' }} · creado {{ $qrCode->created_at->diffForHumans() }}</p>
             </div>
-            <div class="flex flex-wrap gap-2"><a href="{{ route('qr-codes.export', $qrCode) }}" class="button-secondary">Exportar datos</a><button type="button" data-open-modal="edit-qr" class="button-primary">Editar QR</button></div>
+            <div class="flex flex-wrap gap-2"><a href="{{ route('qr-codes.print', $qrCode) }}" target="_blank" class="button-secondary"><svg class="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v7H6z"/></svg>Imprimir</a><a href="{{ route('qr-codes.export', $qrCode) }}" class="button-secondary">Exportar datos</a><button type="button" data-open-modal="edit-qr" class="button-primary">Editar QR</button></div>
         </div>
     </x-slot>
 
@@ -23,7 +23,7 @@
                     <div class="bg-stone-100 p-7">
                         <div class="qr-preview-shell" x-bind:data-frame="state.frame"><div x-ref="canvas" class="qr-canvas w-full"></div><div x-show="state.frame !== 'none'" class="mt-2 max-w-full truncate rounded-full bg-[#171717] px-5 py-2 text-center text-[11px] font-bold tracking-[.18em] text-white" x-text="state.cta"></div></div>
                     </div>
-                    <div class="grid grid-cols-2 gap-2 border-t border-white/10 p-4"><button type="button" x-on:click="download('png')" class="rounded-xl bg-white px-3 py-2.5 text-xs font-semibold text-slate-950 transition hover:bg-stone-100">Descargar PNG</button><button type="button" x-on:click="download('svg')" class="rounded-xl border border-white/15 px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-white/5">Descargar SVG</button></div>
+                    <div class="grid grid-cols-3 gap-2 border-t border-white/10 p-4"><button type="button" x-on:click="download('png')" class="rounded-xl bg-white px-2 py-2.5 text-xs font-semibold text-slate-950 transition hover:bg-stone-100">PNG</button><button type="button" x-on:click="download('svg')" class="rounded-xl border border-white/15 px-2 py-2.5 text-xs font-semibold text-white transition hover:bg-white/5">SVG</button><a href="{{ route('qr-codes.print', $qrCode) }}" target="_blank" class="rounded-xl border border-white/15 px-2 py-2.5 text-center text-xs font-semibold text-white transition hover:bg-white/5">Imprimir</a></div>
                 </section>
 
                 <section class="panel p-5">

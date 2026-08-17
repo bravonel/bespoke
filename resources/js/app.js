@@ -83,6 +83,30 @@ window.qrMini = (config = {}) => ({
     },
 });
 
+window.renderPrintableQr = (element, config = {}) => {
+    if (!element) return null;
+
+    const design = config.design || {};
+    const qr = new QRCodeStyling({
+        width: 640,
+        height: 640,
+        type: 'svg',
+        data: config.url,
+        image: config.logo || undefined,
+        margin: 20,
+        qrOptions: { errorCorrectionLevel: 'H' },
+        imageOptions: { crossOrigin: 'anonymous', margin: 12, imageSize: 0.34, hideBackgroundDots: true },
+        dotsOptions: { color: design.foreground || '#161616', type: design.dots || 'rounded' },
+        backgroundOptions: { color: design.background || '#FFFFFF' },
+        cornersSquareOptions: { color: design.foreground || '#161616', type: design.corners || 'extra-rounded' },
+        cornersDotOptions: { color: design.foreground || '#161616', type: design.corners === 'dot' ? 'dot' : 'square' },
+    });
+
+    qr.append(element);
+
+    return qr;
+};
+
 const activityTracker = (() => {
     const events = [];
     const uiEndpoint = '/activity/ui-events';

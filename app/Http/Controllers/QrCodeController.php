@@ -132,6 +132,13 @@ class QrCodeController extends Controller
         ]);
     }
 
+    public function print(QrCode $qrCode): View
+    {
+        $qrCode->load(['client', 'brand']);
+
+        return view('qr-codes.print', ['qrCode' => $qrCode]);
+    }
+
     public function update(Request $request, QrCode $qrCode): RedirectResponse
     {
         $validated = $this->validateQrCode($request, false);

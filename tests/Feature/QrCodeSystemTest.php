@@ -114,6 +114,22 @@ class QrCodeSystemTest extends TestCase
             ->assertSee('Personas aprox.');
     }
 
+    public function test_authenticated_user_can_open_the_print_ready_qr_page(): void
+    {
+        $user = User::factory()->create();
+        $qrCode = $this->qrCode([
+            'name' => 'QR listo para imprimir',
+            'design' => ['frame' => 'ticket', 'cta' => 'CONOCE MÁS'],
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('qr-codes.print', $qrCode))
+            ->assertOk()
+            ->assertSee('QR listo para imprimir')
+            ->assertSee('CONOCE MÁS')
+            ->assertSee('Imprimir QR');
+    }
+
     private function qrCode(array $overrides = []): QrCode
     {
         return QrCode::query()->create(array_merge([
