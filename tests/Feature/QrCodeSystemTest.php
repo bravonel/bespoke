@@ -6,6 +6,7 @@ use App\Models\Client;
 use App\Models\QrCode;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class QrCodeSystemTest extends TestCase
@@ -94,6 +95,21 @@ class QrCodeSystemTest extends TestCase
         $this->assertDatabaseMissing('qr_scans', ['ip_hash' => '203.0.113.18']);
         $this->assertSame(1, $qrCode->fresh()->scans_count);
         $this->assertNotNull($qrCode->fresh()->last_scanned_at);
+    }
+
+    public function test_authenticated_user_can_load_a_qr_logo_without_a_public_storage_link(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('qr-logos/cliente.png', 'logo-content');
+
+        $user = User::factory()->create();
+        $qrCode = $this->qrCode(['logo_path' => 'qr-logos/cliente.png']);
+
+        $this->actingAs($user)
+            ->get(route('qr-codes.logo', $qrCode))
+            ->assertOk()
+            ->assertHeader('cache-control', 'max-age=3600, private')
+            ->assertStreamedContent('logo-content');
     }
 
     public function test_destination_can_change_without_changing_the_public_qr_url(): void

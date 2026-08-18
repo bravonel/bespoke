@@ -140,6 +140,20 @@ class QrCodeController extends Controller
         return view('qr-codes.print', ['qrCode' => $qrCode]);
     }
 
+    public function logo(QrCode $qrCode): StreamedResponse
+    {
+        abort_unless(
+            $qrCode->logo_path && Storage::disk('public')->exists($qrCode->logo_path),
+            404
+        );
+
+        return Storage::disk('public')->response(
+            $qrCode->logo_path,
+            null,
+            ['Cache-Control' => 'private, max-age=3600']
+        );
+    }
+
     public function update(Request $request, QrCode $qrCode): RedirectResponse
     {
         $validated = $this->validateQrCode($request, false);

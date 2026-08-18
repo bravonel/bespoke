@@ -16,9 +16,13 @@ window.qrDesigner = (initial = {}) => ({
     qr: null,
     copied: false,
     init() {
+        const initialLogo = this.logo;
+        this.logo = null;
         this.qr = new QRCodeStyling(this.options());
         this.qr.append(this.$refs.canvas);
         this.$watch('state', () => this.render());
+
+        if (initialLogo) this.loadRemoteLogo(initialLogo);
     },
     options(size = 320) {
         return {
@@ -49,6 +53,19 @@ window.qrDesigner = (initial = {}) => ({
         };
         reader.readAsDataURL(file);
     },
+    loadRemoteLogo(url) {
+        const image = new Image();
+        image.crossOrigin = 'anonymous';
+        image.onload = () => {
+            this.logo = url;
+            this.render();
+        };
+        image.onerror = () => {
+            this.logo = null;
+            this.render();
+        };
+        image.src = url;
+    },
     removeLogo() {
         this.logo = null;
         if (this.$refs.logoInput) this.$refs.logoInput.value = '';
@@ -66,20 +83,27 @@ window.qrDesigner = (initial = {}) => ({
 
 window.qrMini = (config = {}) => ({
     init() {
-        const qr = new QRCodeStyling({
+        const options = {
             width: 104,
             height: 104,
             type: 'svg',
             data: config.url,
-            image: config.logo || undefined,
             margin: 4,
             qrOptions: { errorCorrectionLevel: 'H' },
             imageOptions: { crossOrigin: 'anonymous', margin: 3, imageSize: 0.32, hideBackgroundDots: true },
             dotsOptions: { color: config.design?.foreground || '#161616', type: config.design?.dots || 'rounded' },
             backgroundOptions: { color: config.design?.background || '#FFFFFF' },
             cornersSquareOptions: { color: config.design?.foreground || '#161616', type: config.design?.corners || 'extra-rounded' },
-        });
+        };
+        const qr = new QRCodeStyling(options);
         qr.append(this.$refs.canvas);
+
+        if (config.logo) {
+            const image = new Image();
+            image.crossOrigin = 'anonymous';
+            image.onload = () => qr.update({ ...options, image: config.logo });
+            image.src = config.logo;
+        }
     },
 });
 
@@ -87,12 +111,11 @@ window.renderPrintableQr = (element, config = {}) => {
     if (!element) return null;
 
     const design = config.design || {};
-    const qr = new QRCodeStyling({
+    const options = {
         width: 640,
         height: 640,
         type: 'svg',
         data: config.url,
-        image: config.logo || undefined,
         margin: 20,
         qrOptions: { errorCorrectionLevel: 'H' },
         imageOptions: { crossOrigin: 'anonymous', margin: 12, imageSize: 0.34, hideBackgroundDots: true },
@@ -100,9 +123,17 @@ window.renderPrintableQr = (element, config = {}) => {
         backgroundOptions: { color: design.background || '#FFFFFF' },
         cornersSquareOptions: { color: design.foreground || '#161616', type: design.corners || 'extra-rounded' },
         cornersDotOptions: { color: design.foreground || '#161616', type: design.corners === 'dot' ? 'dot' : 'square' },
-    });
+    };
+    const qr = new QRCodeStyling(options);
 
     qr.append(element);
+
+    if (config.logo) {
+        const image = new Image();
+        image.crossOrigin = 'anonymous';
+        image.onload = () => qr.update({ ...options, image: config.logo });
+        image.src = config.logo;
+    }
 
     return qr;
 };

@@ -61,6 +61,7 @@ Route::middleware(['auth', TrackUserActivity::class])->group(function (): void {
     Route::get('qr-codes', [QrCodeController::class, 'index'])->name('qr-codes.index');
     Route::get('qr-codes/create', [QrCodeController::class, 'create'])->name('qr-codes.create');
     Route::post('qr-codes', [QrCodeController::class, 'store'])->name('qr-codes.store');
+    Route::get('qr-codes/{qrCode}/logo', [QrCodeController::class, 'logo'])->name('qr-codes.logo');
     Route::get('qr-codes/{qrCode}', [QrCodeController::class, 'show'])->name('qr-codes.show');
     Route::get('qr-codes/{qrCode}/print', [QrCodeController::class, 'print'])->name('qr-codes.print');
     Route::patch('qr-codes/{qrCode}', [QrCodeController::class, 'update'])->name('qr-codes.update');

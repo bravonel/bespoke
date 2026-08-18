@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Storage;
 
 class QrCode extends Model
 {
@@ -64,7 +63,7 @@ class QrCode extends Model
 
     public function logoUrl(): ?string
     {
-        return $this->logo_path ? Storage::disk('public')->url($this->logo_path) : null;
+        return $this->logo_path ? route('qr-codes.logo', $this) : null;
     }
 
     public function trackedDestinationUrl(): string
