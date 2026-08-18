@@ -38,7 +38,7 @@ class QrRedirectController extends Controller
             $qrCode->forceFill(['last_scanned_at' => now()])->save();
         });
 
-        return redirect()->away($qrCode->destination_url, 302, [
+        return redirect()->away($qrCode->trackedDestinationUrl(), 302, [
             'Cache-Control' => 'no-store, private',
             'X-Robots-Tag' => 'noindex, nofollow',
         ]);

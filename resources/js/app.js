@@ -107,6 +107,57 @@ window.renderPrintableQr = (element, config = {}) => {
     return qr;
 };
 
+window.utmBuilder = (initial = {}) => ({
+    open: Boolean(initial.enabled),
+    enabled: Boolean(initial.enabled),
+    baseUrl: initial.baseUrl || '',
+    source: initial.utm_source || '',
+    medium: initial.utm_medium || '',
+    campaign: initial.utm_campaign || '',
+    term: initial.utm_term || '',
+    content: initial.utm_content || '',
+    custom: Array.isArray(initial.custom) ? initial.custom : [],
+    addCustom() {
+        if (this.custom.length >= 10) return;
+        this.custom.push({ key: '', value: '' });
+        this.$nextTick(() => this.$refs.customList?.querySelector('input:last-of-type')?.focus());
+    },
+    removeCustom(index) {
+        this.custom.splice(index, 1);
+    },
+    previewUrl() {
+        const value = String(this.baseUrl || '').trim();
+        if (!value || !this.enabled) return value || 'Ingresa primero el vínculo de destino';
+
+        try {
+            const url = new URL(value);
+            const standard = {
+                utm_source: this.source,
+                utm_medium: this.medium,
+                utm_campaign: this.campaign,
+                utm_term: this.term,
+                utm_content: this.content,
+            };
+
+            Object.entries(standard).forEach(([key, parameterValue]) => {
+                const cleanValue = String(parameterValue || '').trim();
+                if (cleanValue) url.searchParams.set(key, cleanValue);
+                else url.searchParams.delete(key);
+            });
+
+            this.custom.forEach((parameter) => {
+                const key = String(parameter.key || '').trim();
+                const parameterValue = String(parameter.value || '').trim();
+                if (key && parameterValue) url.searchParams.set(key, parameterValue);
+            });
+
+            return url.toString();
+        } catch {
+            return value;
+        }
+    },
+});
+
 const activityTracker = (() => {
     const events = [];
     const uiEndpoint = '/activity/ui-events';

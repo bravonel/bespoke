@@ -29,7 +29,7 @@
                 <section class="panel p-5">
                     <p class="metric-label">URL dinámica</p>
                     <div class="mt-3 flex items-center gap-2"><code class="min-w-0 flex-1 truncate rounded-xl bg-stone-100 px-3 py-2 text-xs text-slate-600">{{ $qrCode->shortUrl() }}</code><button type="button" x-on:click="copyUrl()" class="button-secondary shrink-0 px-3 py-2 text-xs" x-text="copied ? 'Copiado' : 'Copiar'"></button></div>
-                    <div class="mt-4 border-t border-stone-100 pt-4"><p class="text-xs text-slate-400">Destino actual</p><a href="{{ $qrCode->destination_url }}" target="_blank" rel="noopener" class="mt-1 block truncate text-sm font-medium text-slate-700 hover:text-[#e91e8c]">{{ $qrCode->destination_url }}</a></div>
+                    <div class="mt-4 border-t border-stone-100 pt-4"><div class="flex items-center justify-between gap-3"><p class="text-xs text-slate-400">Destino actual</p>@if($qrCode->tracking_parameters['enabled'] ?? false)<span class="rounded-full bg-emerald-100 px-2 py-1 text-[9px] font-semibold uppercase tracking-[.12em] text-emerald-700">UTM activo</span>@endif</div><a href="{{ $qrCode->trackedDestinationUrl() }}" target="_blank" rel="noopener" class="mt-1 block truncate text-sm font-medium text-slate-700 hover:text-[#e91e8c]">{{ $qrCode->trackedDestinationUrl() }}</a></div>
                 </section>
             </aside>
 
@@ -82,7 +82,12 @@
                 <div class="modal-header flex items-start justify-between"><div><h2 class="text-lg font-semibold text-slate-950">Editar señal</h2><p class="mt-1 text-sm text-slate-500">El QR impreso seguirá siendo el mismo.</p></div><button type="button" x-on:click="$dispatch('close')" class="text-slate-400 hover:text-slate-700">✕</button></div>
                 <div class="modal-body space-y-5">
                     <div><label class="field-label" for="edit-name">Nombre</label><input id="edit-name" name="name" class="field" value="{{ $qrCode->name }}" required></div>
-                    <div><label class="field-label" for="edit-url">Destino</label><input id="edit-url" name="destination_url" type="url" class="field" value="{{ $qrCode->destination_url }}" required></div>
+                    <div><label class="field-label" for="edit-url">Destino</label><input id="edit-url" name="destination_url" type="url" class="field" value="{{ $qrCode->destination_url }}" required x-on:input="$dispatch('destination-url-changed', $event.target.value)"></div>
+                    @include('qr-codes._utm-fields', [
+                        'compact' => true,
+                        'baseUrl' => $qrCode->destination_url,
+                        'tracking' => $qrCode->tracking_parameters ?: [],
+                    ])
                     <div class="grid gap-4 sm:grid-cols-2"><div><label class="field-label" for="edit-client">Cliente</label><select id="edit-client" name="client_id" class="field"><option value="">Sin asignar</option>@foreach($clients as $client)<option value="{{ $client->id }}" @selected($qrCode->client_id === $client->id)>{{ $client->name }}</option>@endforeach</select></div><div><label class="field-label" for="edit-brand">Marca</label><select id="edit-brand" name="brand_id" class="field"><option value="">Sin asignar</option>@foreach($brands as $brand)<option value="{{ $brand->id }}" @selected($qrCode->brand_id === $brand->id)>{{ $brand->name }}</option>@endforeach</select></div></div>
                     <div><label class="field-label" for="edit-status">Estatus</label><select id="edit-status" name="status" class="field"><option value="active" @selected($qrCode->status === 'active')>Activo</option><option value="paused" @selected($qrCode->status === 'paused')>Pausado</option><option value="archived" @selected($qrCode->status === 'archived')>Archivado</option></select></div>
                     <div class="grid gap-4 sm:grid-cols-2"><label class="rounded-2xl border border-stone-200 p-3 text-xs text-slate-500">Color del código<div class="mt-2 flex items-center gap-2"><input type="color" name="foreground" x-model="state.foreground" class="h-9 w-9"><span x-text="state.foreground"></span></div></label><label class="rounded-2xl border border-stone-200 p-3 text-xs text-slate-500">Color de fondo<div class="mt-2 flex items-center gap-2"><input type="color" name="background" x-model="state.background" class="h-9 w-9"><span x-text="state.background"></span></div></label></div>

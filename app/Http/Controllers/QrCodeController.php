@@ -84,6 +84,7 @@ class QrCodeController extends Controller
             'created_by' => $request->user()->id,
             'slug' => $this->uniqueSlug(),
             'design' => $this->designFrom($request),
+            'tracking_parameters' => $this->trackingFrom($request),
             'logo_path' => $logoPath,
         ]);
 
@@ -158,6 +159,7 @@ class QrCodeController extends Controller
         $qrCode->fill([
             ...$validated,
             'design' => $this->designFrom($request),
+            'tracking_parameters' => $this->trackingFrom($request),
         ])->save();
 
         return to_route('qr-codes.show', $qrCode)->with('status', 'QR actualizado sin cambiar el código impreso.');
@@ -198,14 +200,56 @@ class QrCodeController extends Controller
 
     private function validateQrCode(Request $request, bool $requireName = true): array
     {
-        return $request->validate([
+        $validated = $request->validate([
             'name' => [$requireName ? 'required' : 'sometimes', 'string', 'max:255'],
             'destination_url' => ['required', 'url:http,https', 'max:2048'],
             'client_id' => ['nullable', 'exists:clients,id'],
             'brand_id' => ['nullable', 'exists:brands,id'],
             'status' => ['required', Rule::in(QrCode::statusOptions())],
             'logo' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:2048'],
+            'utm_enabled' => ['nullable', 'boolean'],
+            'utm_source' => ['nullable', 'string', 'max:255'],
+            'utm_medium' => ['nullable', 'string', 'max:255'],
+            'utm_campaign' => ['nullable', 'string', 'max:255'],
+            'utm_term' => ['nullable', 'string', 'max:255'],
+            'utm_content' => ['nullable', 'string', 'max:255'],
+            'custom_parameters' => ['nullable', 'array', 'max:10'],
+            'custom_parameters.*.key' => ['nullable', 'string', 'max:80', 'regex:/^[A-Za-z][A-Za-z0-9_.~-]*$/'],
+            'custom_parameters.*.value' => ['nullable', 'string', 'max:255'],
         ]);
+
+        return collect($validated)->only([
+            'name',
+            'destination_url',
+            'client_id',
+            'brand_id',
+            'status',
+        ])->all();
+    }
+
+    private function trackingFrom(Request $request): array
+    {
+        $reservedKeys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'];
+        $custom = collect($request->input('custom_parameters', []))
+            ->map(fn ($parameter) => [
+                'key' => trim((string) ($parameter['key'] ?? '')),
+                'value' => trim((string) ($parameter['value'] ?? '')),
+            ])
+            ->filter(fn ($parameter) => $parameter['key'] !== '' && $parameter['value'] !== '')
+            ->reject(fn ($parameter) => in_array($parameter['key'], $reservedKeys, true))
+            ->unique('key')
+            ->values()
+            ->all();
+
+        return [
+            'enabled' => $request->boolean('utm_enabled'),
+            'utm_source' => trim($request->string('utm_source')->toString()),
+            'utm_medium' => trim($request->string('utm_medium')->toString()),
+            'utm_campaign' => trim($request->string('utm_campaign')->toString()),
+            'utm_term' => trim($request->string('utm_term')->toString()),
+            'utm_content' => trim($request->string('utm_content')->toString()),
+            'custom' => $custom,
+        ];
     }
 
     private function designFrom(Request $request): array

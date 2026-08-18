@@ -18,15 +18,28 @@
                     <div class="flex items-center gap-4 border-b border-stone-100 pb-5"><span class="grid h-9 w-9 place-items-center rounded-xl bg-[#171717] text-xs font-bold text-white">01</span><div><h2 class="font-semibold text-slate-950">Destino y propiedad</h2><p class="text-xs text-slate-500">La información operativa de la campaña.</p></div></div>
                     <div class="mt-6 grid gap-5 sm:grid-cols-2">
                         <div class="sm:col-span-2"><label for="name" class="field-label">Nombre de la campaña</label><input id="name" name="name" value="{{ old('name') }}" class="field" placeholder="Ej. Congreso Cardiología 2026" required><x-input-error :messages="$errors->get('name')" class="mt-2" /></div>
-                        <div class="sm:col-span-2"><label for="destination_url" class="field-label">Vínculo de destino</label><input id="destination_url" name="destination_url" type="url" value="{{ old('destination_url') }}" class="field" placeholder="https://cliente.com/campaña" required><p class="mt-2 text-xs text-slate-400">Podrás cambiarlo después sin modificar ni reimprimir el QR.</p><x-input-error :messages="$errors->get('destination_url')" class="mt-2" /></div>
+                        <div class="sm:col-span-2"><label for="destination_url" class="field-label">Vínculo de destino</label><input id="destination_url" name="destination_url" type="url" value="{{ old('destination_url') }}" class="field" placeholder="https://cliente.com/campaña" required x-on:input="$dispatch('destination-url-changed', $event.target.value)"><p class="mt-2 text-xs text-slate-400">Podrás cambiarlo después sin modificar ni reimprimir el QR.</p><x-input-error :messages="$errors->get('destination_url')" class="mt-2" /></div>
                         <div><label for="client_id" class="field-label">Cliente</label><select id="client_id" name="client_id" class="field"><option value="">Sin asignar</option>@foreach ($clients as $client)<option value="{{ $client->id }}" @selected(old('client_id') == $client->id)>{{ $client->name }}</option>@endforeach</select></div>
                         <div><label for="brand_id" class="field-label">Marca</label><select id="brand_id" name="brand_id" class="field"><option value="">Sin asignar</option>@foreach ($brands as $brand)<option value="{{ $brand->id }}" data-client="{{ $brand->client_id }}" @selected(old('brand_id') == $brand->id)>{{ $brand->name }}</option>@endforeach</select></div>
                         <input type="hidden" name="status" value="active">
                     </div>
                 </section>
 
+                @include('qr-codes._utm-fields', [
+                    'baseUrl' => old('destination_url', ''),
+                    'tracking' => [
+                        'enabled' => old('utm_enabled', false),
+                        'utm_source' => old('utm_source', ''),
+                        'utm_medium' => old('utm_medium', ''),
+                        'utm_campaign' => old('utm_campaign', ''),
+                        'utm_term' => old('utm_term', ''),
+                        'utm_content' => old('utm_content', ''),
+                        'custom' => old('custom_parameters', []),
+                    ],
+                ])
+
                 <section class="panel p-6 sm:p-8">
-                    <div class="flex items-center gap-4 border-b border-stone-100 pb-5"><span class="grid h-9 w-9 place-items-center rounded-xl bg-[#e91e8c] text-xs font-bold text-white">02</span><div><h2 class="font-semibold text-slate-950">Identidad visual</h2><p class="text-xs text-slate-500">Dale una voz propia al patrón.</p></div></div>
+                    <div class="flex items-center gap-4 border-b border-stone-100 pb-5"><span class="grid h-9 w-9 place-items-center rounded-xl bg-[#e91e8c] text-xs font-bold text-white">03</span><div><h2 class="font-semibold text-slate-950">Identidad visual</h2><p class="text-xs text-slate-500">Dale una voz propia al patrón.</p></div></div>
                     <div class="mt-6 grid gap-6 lg:grid-cols-2">
                         <div>
                             <label class="field-label">Paleta</label>

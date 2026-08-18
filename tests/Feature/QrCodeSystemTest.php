@@ -17,6 +17,12 @@ class QrCodeSystemTest extends TestCase
         $user = User::factory()->create();
         $client = Client::query()->create(['name' => 'Cliente QR', 'status' => 'active']);
 
+        $this->actingAs($user)
+            ->get(route('qr-codes.create'))
+            ->assertOk()
+            ->assertSee('Parámetros UTM')
+            ->assertSee('Vista previa de URL');
+
         $response = $this->actingAs($user)->post(route('qr-codes.store'), [
             'name' => 'Congreso 2026',
             'destination_url' => 'https://example.com/primera-version',
@@ -28,6 +34,13 @@ class QrCodeSystemTest extends TestCase
             'corners' => 'extra-rounded',
             'frame' => 'ticket',
             'cta' => 'CONOCE MÁS',
+            'utm_enabled' => '1',
+            'utm_source' => 'congreso',
+            'utm_medium' => 'qr',
+            'utm_campaign' => 'cardiologia-2026',
+            'custom_parameters' => [
+                ['key' => 'stand', 'value' => 'a-12'],
+            ],
         ]);
 
         $qrCode = QrCode::query()->firstOrFail();
@@ -36,7 +49,31 @@ class QrCodeSystemTest extends TestCase
         $this->assertSame('Congreso 2026', $qrCode->name);
         $this->assertSame('#123456', $qrCode->design['foreground']);
         $this->assertSame('ticket', $qrCode->design['frame']);
+        $this->assertTrue($qrCode->tracking_parameters['enabled']);
+        $this->assertSame('cardiologia-2026', $qrCode->tracking_parameters['utm_campaign']);
+        $this->assertSame([['key' => 'stand', 'value' => 'a-12']], $qrCode->tracking_parameters['custom']);
         $this->assertSame($user->id, $qrCode->created_by);
+    }
+
+    public function test_dynamic_redirect_adds_utm_and_custom_parameters_to_the_destination(): void
+    {
+        $qrCode = $this->qrCode([
+            'destination_url' => 'https://example.com/landing?lang=es&utm_source=anterior#registro',
+            'tracking_parameters' => [
+                'enabled' => true,
+                'utm_source' => 'folleto',
+                'utm_medium' => 'qr',
+                'utm_campaign' => 'lanzamiento 2026',
+                'utm_term' => '',
+                'utm_content' => 'portada',
+                'custom' => [
+                    ['key' => 'stand', 'value' => 'A 12'],
+                ],
+            ],
+        ]);
+
+        $this->get(route('qr.redirect', $qrCode->slug))
+            ->assertRedirect('https://example.com/landing?lang=es&utm_source=folleto&utm_medium=qr&utm_campaign=lanzamiento%202026&utm_content=portada&stand=A%2012#registro');
     }
 
     public function test_public_redirect_records_an_anonymized_scan(): void
