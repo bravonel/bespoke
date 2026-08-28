@@ -57,7 +57,7 @@
                         </option>
                     @endforeach
                 </select>
-                <input name="blocked_reason" class="field mt-0 py-2 text-sm" placeholder="Motivo si bloqueas">
+                <input name="blocked_reason" class="field mt-0 py-2 text-sm" placeholder="Motivo al regresar a Por hacer">
                 <input name="return_reason" class="field mt-0 py-2 text-sm" placeholder="Corrección si devuelves">
                 <button class="button-secondary py-2 text-sm">Guardar</button>
             </form>
@@ -67,43 +67,39 @@
                 {{ $taskPriorityMeta[$task->priority]['label'] }}
             </span>
 
-            @if ($task->personal_priority)
-                <span class="rounded-full bg-slate-950 px-3 py-1 text-xs font-bold text-white">Orden #{{ $task->personal_priority }}</span>
-            @endif
-
             @if ($task->due_at)
                 <span class="rounded-full border px-3 py-1 text-xs font-semibold {{ $isOverdue ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-stone-200 bg-stone-50 text-slate-600' }}">
                     Entrega {{ $task->due_at->translatedFormat('d M Y') }}
                 </span>
             @endif
 
-            <span class="rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-semibold text-slate-600">
-                Carga {{ $task->planned_for?->translatedFormat('d M Y') ?: 'sin fecha' }}
-            </span>
-
-            <span class="rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-semibold text-slate-600">
-                {{ \App\Models\Task::formatEstimatedMinutes($task->estimated_minutes) }}
-            </span>
-
-            @if ($task->assignee)
+            @forelse ($task->assignments as $assignment)
                 <span class="rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-semibold text-slate-600">
-                    {{ $task->assignee->name }}
+                    {{ $assignment->user?->name ?: 'Sin participante' }}
+                    · {{ $assignment->work_date?->translatedFormat('d M') ?: 'sin fecha' }}
+                    · {{ \App\Models\Task::formatEstimatedMinutes($assignment->estimated_minutes) }}
+                    @if ($assignment->personal_priority) · #{{ $assignment->personal_priority }} @endif
                 </span>
-            @endif
+            @empty
+                <span class="rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-semibold text-slate-600">Sin participantes</span>
+            @endforelse
 
             @if ($canManageTask && ! in_array($task->status, \App\Models\Task::inactiveStatuses(), true))
-                <form method="POST" action="{{ route('tasks.update-schedule', $task) }}">
-                    @csrf
-                    @method('PATCH')
-                    <input type="hidden" name="planned_for" value="{{ today()->addDay()->format('Y-m-d') }}">
-                    <button class="button-secondary px-3 py-1.5 text-xs">Pasar a mañana</button>
-                </form>
+                @foreach ($task->assignments as $assignment)
+                    <form method="POST" action="{{ route('tasks.update-schedule', $task) }}">
+                        @csrf
+                        @method('PATCH')
+                        <input type="hidden" name="planned_for" value="{{ today()->addDay()->format('Y-m-d') }}">
+                        <input type="hidden" name="user_id" value="{{ $assignment->user_id }}">
+                        <button class="button-secondary px-3 py-1.5 text-xs">{{ $assignment->user?->name }}: mañana</button>
+                    </form>
+                @endforeach
             @endif
         </div>
 
-        @if ($task->status === 'blocked' && $task->blocked_reason)
+        @if ($task->status === 'todo' && $task->blocked_reason)
             <div class="mb-6 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm leading-6 text-rose-900">
-                <strong>Bloqueo:</strong> {{ $task->blocked_reason }}
+                <strong>Por destrabar:</strong> {{ $task->blocked_reason }}
             </div>
         @endif
 
@@ -252,43 +248,13 @@
                         @endforeach
                     </select>
                 </div>
-
-                <div>
-                    <label class="field-label" for="drwr-personal-priority">Orden para el responsable</label>
-                    <input id="drwr-personal-priority" type="number" min="1" max="999" name="personal_priority" class="field" value="{{ $task->personal_priority }}">
-                </div>
-
                 <div>
                     <label class="field-label" for="drwr-due-at">Fecha de entrega</label>
                     <input id="drwr-due-at" type="date" name="due_at" class="field" value="{{ $task->due_at?->format('Y-m-d') }}">
                 </div>
             </div>
 
-            <div class="grid gap-4 sm:grid-cols-2">
-                <div>
-                    <label class="field-label" for="drwr-planned-for">Día de carga</label>
-                    <input id="drwr-planned-for" type="date" name="planned_for" class="field" value="{{ $task->planned_for?->format('Y-m-d') }}">
-                </div>
-
-                <div>
-                    <label class="field-label" for="drwr-estimated-hours">Horas estimadas</label>
-                    <input id="drwr-estimated-hours" type="number" min="0" max="24" step="0.25" name="estimated_hours" class="field" value="{{ $task->estimated_minutes !== null ? $task->estimated_minutes / 60 : '' }}">
-                </div>
-            </div>
-
-            <div>
-                <label class="field-label" for="drwr-assigned-to">Asignado a</label>
-                <select id="drwr-assigned-to" name="assigned_to" class="field">
-                    <option value="">Sin asignar</option>
-                    @foreach ($users->groupBy('area') as $area => $areaUsers)
-                        <optgroup label="{{ $area ? \App\Support\OperationalLabels::get($area) : 'Sin área' }}">
-                            @foreach ($areaUsers as $user)
-                                <option value="{{ $user->id }}" @selected($task->assigned_to == $user->id)>{{ $user->name }}</option>
-                            @endforeach
-                        </optgroup>
-                    @endforeach
-                </select>
-            </div>
+            @include('tasks._assignment-fields')
 
             <div class="flex items-center gap-3 border-t border-stone-200 pt-5">
                 <button class="button-primary">Guardar cambios</button>

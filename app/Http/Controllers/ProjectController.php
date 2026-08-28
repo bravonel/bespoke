@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\Access\OperationalAccess;
 use App\Services\Activity\ActivityFeed;
 use App\Services\Tasks\TaskWorkflow;
+use App\Services\Tasks\TaskAssignments;
 use App\Support\OperationalLabels;
 use App\Support\SimpleXlsxWriter;
 use Illuminate\Contracts\View\View;
@@ -19,6 +20,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -28,7 +30,7 @@ class ProjectController extends Controller
     public function index(Request $request, OperationalAccess $access): View
     {
         $query = $access->projects($request->user())
-            ->with(['client', 'brand', 'owner'])
+            ->with(['client', 'brand', 'owner', 'workloads.user'])
             ->withCount('tasks');
 
         $filters = $this->projectFilters($request);
@@ -49,17 +51,18 @@ class ProjectController extends Controller
             'deliveryTypes' => Project::deliveryTypeOptions(),
             'workloadRoles' => ProjectWorkload::roleOptions(),
             'filters' => $filters,
+            'canManageCapacity' => $access->canManageCapacity($request->user()),
         ]);
     }
 
     public function export(Request $request, OperationalAccess $access): BinaryFileResponse
     {
-        $query = $access->projects($request->user())->with(['client', 'brand', 'owner'])->withCount('tasks');
+        $query = $access->projects($request->user())->with(['client', 'brand', 'owner', 'workloads.user'])->withCount('tasks');
         $this->applyProjectFilters($query, $this->projectFilters($request));
 
         $rows = [[
             'ODT', 'Cliente', 'Marca', 'Tipo de material', 'Etapa', 'Estatus',
-            'Prioridad', 'Responsable', 'Inicio', 'Entrega', 'Tareas',
+            'Prioridad', 'Participantes', 'Inicio', 'Entrega', 'Tareas',
         ]];
 
         foreach ($query->latest()->get() as $project) {
@@ -71,7 +74,7 @@ class ProjectController extends Controller
                 OperationalLabels::get($project->current_stage),
                 OperationalLabels::get($project->status),
                 OperationalLabels::get($project->priority),
-                $project->owner?->name ?: 'Sin asignar',
+                $project->workloads->pluck('user.name')->filter()->unique()->join(', ') ?: 'Sin asignar',
                 $project->starts_at?->format('d/m/Y'),
                 $project->due_at?->format('d/m/Y'),
                 $project->tasks_count,
@@ -102,6 +105,7 @@ class ProjectController extends Controller
             'materialTypes' => Project::materialTypeOptions(),
             'deliveryTypes' => Project::deliveryTypeOptions(),
             'workloadRoles' => ProjectWorkload::roleOptions(),
+            'canManageCapacity' => $access->canManageCapacity($request->user()),
         ]);
     }
 
@@ -118,7 +122,6 @@ class ProjectController extends Controller
                     fn ($query) => $query->where('client_id', $request->integer('client_id'))
                 ),
             ],
-            'owner_id' => ['nullable', 'exists:users,id'],
             'name' => ['required', 'string', 'max:255'],
             'odt_code' => ['required', 'string', 'max:255', 'unique:projects,odt_code'],
             'project_type' => ['required', 'string', 'max:255'],
@@ -135,23 +138,32 @@ class ProjectController extends Controller
             'starts_at' => ['nullable', 'date'],
             'due_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
             'workloads' => ['nullable', 'array'],
-            'workloads.*.user_id' => ['nullable', 'exists:users,id'],
-            'workloads.*.work_date' => ['nullable', 'date'],
-            'workloads.*.estimated_hours' => ['nullable', 'numeric', 'min:0', 'max:24'],
-            'workloads.*.notes' => ['nullable', 'string', 'max:255'],
+            'workloads.*.activity' => ['nullable', 'string', 'max:255'],
             'workloads.*.status' => ['nullable', Rule::in(Task::statusOptions())],
-            'workloads.*.personal_priority' => ['nullable', 'integer', 'min:1', 'max:999'],
             'workloads.*.blocked_reason' => ['nullable', 'string', 'max:2000'],
             'workloads.*.return_reason' => ['nullable', 'string', 'max:2000'],
+            'workloads.*.participants' => ['nullable', 'array'],
+            'workloads.*.participants.*.user_id' => ['nullable', 'distinct', 'exists:users,id'],
+            'workloads.*.participants.*.work_date' => ['nullable', 'date'],
+            'workloads.*.participants.*.estimated_hours' => ['nullable', 'numeric', 'min:0', 'max:24'],
+            'workloads.*.participants.*.personal_priority' => ['nullable', 'integer', 'min:1', 'max:999'],
         ]);
 
-        $project = Project::create([
-            ...collect($validated)->except(['workloads', 'project_type_other'])->all(),
-            'owner_id' => $validated['owner_id'] ?? $request->user()->id,
-            'code' => 'BSP-'.Str::upper(Str::random(6)),
-        ]);
+        if (filled($validated['workloads'] ?? null)) {
+            abort_unless($access->canManageCapacity($request->user()), 403);
+        }
 
-        $this->syncWorkloads($project, $validated['workloads'] ?? []);
+        $project = DB::transaction(function () use ($validated, $request): Project {
+            $project = Project::create([
+                ...collect($validated)->except(['workloads', 'project_type_other'])->all(),
+                'owner_id' => $request->user()->id,
+                'code' => 'BSP-'.Str::upper(Str::random(6)),
+            ]);
+
+            $this->syncWorkloads($project, $validated['workloads'] ?? []);
+
+            return $project;
+        });
 
         return to_route('projects.show', $project)->with('status', 'Proyecto creado.');
     }
@@ -177,7 +189,6 @@ class ProjectController extends Controller
                     fn ($query) => $query->where('client_id', $request->integer('client_id'))
                 ),
             ],
-            'owner_id' => ['nullable', 'exists:users,id'],
             'name' => ['required', 'string', 'max:255'],
             'odt_code' => ['required', 'string', 'max:255', Rule::unique('projects', 'odt_code')->ignore($project)],
             'project_type' => ['required', 'string', 'max:255'],
@@ -194,18 +205,28 @@ class ProjectController extends Controller
             'starts_at' => ['nullable', 'date'],
             'due_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
             'workloads' => ['nullable', 'array'],
-            'workloads.*.user_id' => ['nullable', 'exists:users,id'],
-            'workloads.*.work_date' => ['nullable', 'date'],
-            'workloads.*.estimated_hours' => ['nullable', 'numeric', 'min:0', 'max:24'],
-            'workloads.*.notes' => ['nullable', 'string', 'max:255'],
+            'workloads.*.activity' => ['nullable', 'string', 'max:255'],
             'workloads.*.status' => ['nullable', Rule::in(Task::statusOptions())],
-            'workloads.*.personal_priority' => ['nullable', 'integer', 'min:1', 'max:999'],
             'workloads.*.blocked_reason' => ['nullable', 'string', 'max:2000'],
             'workloads.*.return_reason' => ['nullable', 'string', 'max:2000'],
+            'workloads.*.participants' => ['nullable', 'array'],
+            'workloads.*.participants.*.user_id' => ['nullable', 'distinct', 'exists:users,id'],
+            'workloads.*.participants.*.work_date' => ['nullable', 'date'],
+            'workloads.*.participants.*.estimated_hours' => ['nullable', 'numeric', 'min:0', 'max:24'],
+            'workloads.*.participants.*.personal_priority' => ['nullable', 'integer', 'min:1', 'max:999'],
         ]);
 
-        $project->update(collect($validated)->except(['workloads', 'project_type_other'])->all());
-        $this->syncWorkloads($project, $validated['workloads'] ?? []);
+        if (array_key_exists('workloads', $validated)) {
+            abort_unless($access->canManageCapacity($request->user()), 403);
+        }
+
+        DB::transaction(function () use ($project, $validated): void {
+            $project->update(collect($validated)->except(['workloads', 'project_type_other', 'owner_id'])->all());
+
+            if (array_key_exists('workloads', $validated)) {
+                $this->syncWorkloads($project, $validated['workloads'] ?? []);
+            }
+        });
 
         return to_route('projects.show', $project)->with('status', 'Proyecto actualizado.');
     }
@@ -220,7 +241,7 @@ class ProjectController extends Controller
             'workloads.user',
             'workloads.task',
             'tasks' => fn ($query) => $query
-                ->with('assignee')
+                ->with(['assignee', 'assignments.user'])
                 ->with([
                     'subtasks' => fn ($subquery) => $subquery
                         ->orderBy('sort_order')
@@ -278,13 +299,16 @@ class ProjectController extends Controller
             'collaboratorLoadRows' => $collaboratorLoadRows,
             'recentActivity' => $activity->forProject($project),
             'canManageProject' => $access->canManageProject($request->user(), $project),
+            'canManageCapacity' => $access->canManageCapacity($request->user()),
             'boardSummary' => [
                 'total_tasks' => $project->tasks->count(),
                 'done_tasks' => $deliveredTasks,
                 'finalized_tasks' => $finalizedTasks,
                 'open_subtasks' => $openSubtasks,
                 'overdue_tasks' => $overdueTasks,
-                'unassigned_tasks' => $project->tasks->whereNull('assigned_to')->count(),
+                'unassigned_tasks' => $project->tasks
+                    ->filter(fn (Task $task) => $task->assigned_to === null && $task->assignments->isEmpty())
+                    ->count(),
                 'planned_minutes' => $plannedMinutes,
                 'missing_estimates' => $project->tasks
                     ->whereNotIn('status', Task::inactiveStatuses())
@@ -299,14 +323,27 @@ class ProjectController extends Controller
     {
         $taskRows = $project->tasks
             ->whereNotIn('status', Task::inactiveStatuses())
-            ->map(fn (Task $task) => [
-                'kind' => 'task',
-                'user_id' => $task->assigned_to,
-                'user' => $task->assignee,
-                'minutes' => $task->estimated_minutes,
-                'role' => null,
-                'missing_estimate' => $task->estimated_minutes === null,
-            ]);
+            ->flatMap(function (Task $task) use ($workloadRoles) {
+                if ($task->assignments->isNotEmpty()) {
+                    return $task->assignments->map(fn (ProjectWorkload $assignment) => [
+                        'kind' => 'task',
+                        'user_id' => $assignment->user_id,
+                        'user' => $assignment->user,
+                        'minutes' => $assignment->estimated_minutes,
+                        'role' => $workloadRoles[$assignment->role] ?? $assignment->role,
+                        'missing_estimate' => $assignment->estimated_minutes === null,
+                    ]);
+                }
+
+                return [[
+                    'kind' => 'task',
+                    'user_id' => $task->assigned_to,
+                    'user' => $task->assignee,
+                    'minutes' => $task->estimated_minutes,
+                    'role' => null,
+                    'missing_estimate' => $task->estimated_minutes === null,
+                ]];
+            });
 
         $workloadRows = $project->workloads
             ->whereNull('task_id')
@@ -373,41 +410,29 @@ class ProjectController extends Controller
 
     private function syncWorkloads(Project $project, array $workloads): void
     {
-        $existingByRole = $project->workloads()->with('task')->get()->keyBy('role');
+        $existingByRole = $project->workloads()->with('task')->get()->groupBy('role');
         $nextSortOrder = ((int) $project->tasks()->max('sort_order')) + 1;
+        $assignmentService = app(TaskAssignments::class);
 
         foreach (ProjectWorkload::roleOptions() as $role => $label) {
             $row = $workloads[$role] ?? [];
-            $userId = filled($row['user_id'] ?? null) ? (int) $row['user_id'] : null;
-            $workDate = filled($row['work_date'] ?? null) ? $row['work_date'] : null;
-            $estimatedMinutes = $this->estimatedMinutes($row['estimated_hours'] ?? null);
-            $notes = filled($row['notes'] ?? null) ? trim((string) $row['notes']) : null;
+            $participants = collect($row['participants'] ?? [])
+                ->filter(fn (array $participant) => filled($participant['user_id'] ?? null))
+                ->values()
+                ->all();
+            $activity = filled($row['activity'] ?? null) ? trim((string) $row['activity']) : null;
             $taskStatus = $row['status'] ?? 'todo';
-            $personalPriority = filled($row['personal_priority'] ?? null) ? (int) $row['personal_priority'] : null;
-            $existing = $existingByRole->get($role);
+            $existingRows = $existingByRole->get($role, collect());
+            $task = $existingRows->pluck('task')->filter()->first();
 
-            if ($userId === null && $workDate === null && $estimatedMinutes === null && $notes === null) {
-                $existing?->task?->delete();
-                $existing?->delete();
-
-                continue;
-            }
-
-            $workload = $project->workloads()->updateOrCreate(['role' => $role], [
-                'user_id' => $userId,
-                'work_date' => $workDate,
-                'estimated_minutes' => $estimatedMinutes,
-                'notes' => $notes,
-            ]);
-
-            if ($notes === null) {
-                $workload->task?->delete();
-                $workload->update(['task_id' => null]);
+            if ($participants === [] && $activity === null) {
+                $task?->delete();
+                $existingRows->each->delete();
 
                 continue;
             }
 
-            $task = $workload->task ?: new Task([
+            $task = $task ?: new Task([
                 'project_id' => $project->id,
                 'priority' => 'normal',
                 'status' => 'todo',
@@ -415,24 +440,17 @@ class ProjectController extends Controller
             ]);
             $previousStatus = $task->status ?: 'todo';
             $task->fill([
-                'assigned_to' => $userId,
-                'title' => $notes,
+                'title' => $activity ?: $label,
                 'status' => $previousStatus,
-                'personal_priority' => $personalPriority,
-                'planned_for' => $workDate,
-                'estimated_minutes' => $estimatedMinutes,
                 'due_at' => $project->due_at,
             ])->save();
 
+            $assignmentService->sync($task, $participants, $role, $task->title);
+
             if ($previousStatus !== $taskStatus) {
-                $transitionContext = [
-                    ...$row,
-                    'blocked_reason' => $row['blocked_reason'] ?? $notes,
-                ];
-                $task->update(app(TaskWorkflow::class)->transition($task, $taskStatus, $transitionContext));
+                $task->update(app(TaskWorkflow::class)->transition($task, $taskStatus, $row));
                 app(TaskWorkflow::class)->syncProjectCompletion($task);
             }
-            $workload->update(['task_id' => $task->id]);
         }
     }
 

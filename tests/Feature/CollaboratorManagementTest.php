@@ -14,7 +14,7 @@ class CollaboratorManagementTest extends TestCase
 
     public function test_collaborators_can_be_created_and_listed(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
 
         $response = $this->actingAs($admin)->post(route('collaborators.store'), [
             'name' => 'Nueva Colaboradora',
@@ -43,7 +43,7 @@ class CollaboratorManagementTest extends TestCase
 
     public function test_collaborators_can_be_updated_without_changing_password(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
         $collaborator = User::factory()->create([
             'password' => Hash::make('Original123!'),
             'daily_capacity_minutes' => 480,
@@ -71,7 +71,7 @@ class CollaboratorManagementTest extends TestCase
 
     public function test_collaborators_can_be_deactivated_and_reactivated(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
         $collaborator = User::factory()->create();
 
         $this->actingAs($admin)
@@ -94,7 +94,7 @@ class CollaboratorManagementTest extends TestCase
 
     public function test_user_cannot_deactivate_their_own_account(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
 
         $this->actingAs($admin)
             ->patch(route('collaborators.deactivate', $admin))
@@ -120,5 +120,17 @@ class CollaboratorManagementTest extends TestCase
             ->assertNoRedirect();
 
         $this->assertGuest();
+    }
+
+    public function test_non_admin_cannot_mutate_collaborators(): void
+    {
+        $direction = User::factory()->create(['role' => User::ROLE_DIRECTION]);
+        $collaborator = User::factory()->create();
+
+        $this->actingAs($direction)
+            ->patch(route('collaborators.deactivate', $collaborator))
+            ->assertForbidden();
+
+        $this->assertTrue($collaborator->refresh()->is_active);
     }
 }

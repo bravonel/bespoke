@@ -42,12 +42,12 @@ class LocalizationTest extends TestCase
     {
         $this->assertSame('Activo', OperationalLabels::get('active'));
         $this->assertSame('En revisión', OperationalLabels::get('in_review'));
-        $this->assertSame('Resumen inicial', OperationalLabels::get('brief'));
-        $this->assertSame('Listo para enviar', OperationalLabels::get('ready_to_submit'));
-        $this->assertSame('Redacción', OperationalLabels::get('Copy'));
-        $this->assertSame('Médico', OperationalLabels::get('Medical'));
-        $this->assertSame('Redes sociales', OperationalLabels::get('Social Media'));
+        $this->assertSame('Inicial', OperationalLabels::get('brief'));
+        $this->assertSame('Cliente', OperationalLabels::get('ready_to_submit'));
+        $this->assertSame('Copy', OperationalLabels::get('Copy'));
+        $this->assertSame('Medical', OperationalLabels::get('Medical'));
+        $this->assertSame('Social Media', OperationalLabels::get('Social Media'));
         $this->assertSame('Campaña', Project::materialTypeLabel('campaign'));
-        $this->assertSame('Redacción', ProjectWorkload::roleOptions()['copy']);
+        $this->assertSame('Copy', ProjectWorkload::roleOptions()['copy']);
     }
 }

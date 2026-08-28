@@ -77,11 +77,13 @@ class CollaboratorController extends Controller
                 ->pluck('puesto'),
             'roleOptions' => User::roleOptions(),
             'filters' => $filters,
+            'canManageCollaborators' => $request->user()->isAdmin(),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
+        $this->authorizeAdministration($request);
         $validated = $this->validatedAttributes($request, new User);
         $validated['email_verified_at'] = now();
 
@@ -97,6 +99,7 @@ class CollaboratorController extends Controller
 
     public function update(Request $request, User $collaborator): RedirectResponse
     {
+        $this->authorizeAdministration($request);
         $validated = $this->validatedAttributes($request, $collaborator, isUpdate: true);
 
         try {
@@ -115,6 +118,7 @@ class CollaboratorController extends Controller
 
     public function deactivate(Request $request, User $collaborator): RedirectResponse
     {
+        $this->authorizeAdministration($request);
         if ($collaborator->is($request->user())) {
             return back()->with('status', 'No puedes dar de baja tu propio usuario.');
         }
@@ -133,6 +137,7 @@ class CollaboratorController extends Controller
 
     public function activate(Request $request, User $collaborator): RedirectResponse
     {
+        $this->authorizeAdministration($request);
         $collaborator->update(['is_active' => true]);
         $this->audit->record('user.activated', $collaborator, $request->user());
 
@@ -196,5 +201,10 @@ class CollaboratorController extends Controller
         }
 
         return $attributes;
+    }
+
+    private function authorizeAdministration(Request $request): void
+    {
+        abort_unless($request->user()->isActiveForAccess() && $request->user()->isAdmin(), 403);
     }
 }

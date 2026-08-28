@@ -12,13 +12,14 @@ new #[Layout('layouts.guest')] class extends Component
 
     public function login(UserSessionService $sessions): void
     {
+        $this->form->normalizeEmail();
         $this->validate();
         $this->form->authenticate();
         Session::regenerate();
         if (request()->hasSession()) {
             $sessions->start(auth()->user(), request());
         }
-        $this->redirectIntended(default: route('dashboard', absolute: false), navigate: true);
+        $this->redirect(route('dashboard', absolute: false), navigate: true);
     }
 }; ?>
 
@@ -80,8 +81,14 @@ new #[Layout('layouts.guest')] class extends Component
             @endif
         </div>
 
-        <button type="submit" class="button-primary w-full justify-center py-3 text-base">
-            Entrar
+        <button
+            type="submit"
+            class="button-primary w-full justify-center py-3 text-base disabled:cursor-wait disabled:opacity-60"
+            wire:loading.attr="disabled"
+            wire:target="login"
+        >
+            <span wire:loading.remove wire:target="login">Entrar</span>
+            <span wire:loading wire:target="login">Verificando…</span>
         </button>
     </form>
 </div>

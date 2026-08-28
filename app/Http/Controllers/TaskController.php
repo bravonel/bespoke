@@ -8,11 +8,13 @@ use App\Models\User;
 use App\Services\Access\OperationalAccess;
 use App\Services\Activity\ActivityFeed;
 use App\Services\Tasks\TaskWorkflow;
+use App\Services\Tasks\TaskAssignments;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
 
 class TaskController extends Controller
 {
@@ -24,6 +26,7 @@ class TaskController extends Controller
             'project.brand',
             'project.owner',
             'assignee',
+            'assignments.user',
             'subtasks' => fn ($query) => $query
                 ->orderBy('sort_order')
                 ->orderBy('id'),
@@ -55,6 +58,7 @@ class TaskController extends Controller
             'canManageTask' => $access->canManageTask($request->user(), $task),
             'canOperateTask' => $access->canOperateTask($request->user(), $task),
             'canCommentTask' => true,
+            'assignmentRows' => app(TaskAssignments::class)->participants($task),
         ];
 
         if ($request->hasHeader('X-Drawer')) {
@@ -64,7 +68,7 @@ class TaskController extends Controller
         return view('tasks.show', $viewData);
     }
 
-    public function update(Request $request, Task $task, OperationalAccess $access): RedirectResponse
+    public function update(Request $request, Task $task, OperationalAccess $access, TaskAssignments $assignments): RedirectResponse
     {
         abort_unless($access->canManageTask($request->user(), $task), 403);
         $validated = $request->validate([
@@ -72,6 +76,12 @@ class TaskController extends Controller
             'description' => ['nullable', 'string'],
             'blocked_reason' => ['nullable', 'string', 'max:2000'],
             'assigned_to' => ['nullable', 'exists:users,id'],
+            'assignments' => ['nullable', 'array'],
+            'assignments.*.user_id' => ['nullable', 'distinct', 'exists:users,id'],
+            'assignments.*.role' => ['nullable', Rule::in(array_keys(\App\Models\ProjectWorkload::roleOptions()))],
+            'assignments.*.work_date' => ['nullable', 'date'],
+            'assignments.*.estimated_hours' => ['nullable', 'numeric', 'min:0', 'max:24'],
+            'assignments.*.personal_priority' => ['nullable', 'integer', 'min:1', 'max:999'],
             'planned_for' => ['nullable', 'date'],
             'estimated_hours' => ['nullable', 'numeric', 'min:0', 'max:24'],
             'due_at' => ['nullable', 'date'],
@@ -79,7 +89,10 @@ class TaskController extends Controller
             'personal_priority' => ['nullable', 'integer', 'min:1', 'max:999'],
         ]);
 
-        $task->update($this->taskAttributes($validated));
+        DB::transaction(function () use ($task, $validated, $assignments): void {
+            $task->update($this->taskAttributes($validated));
+            $assignments->sync($task, $this->assignmentRows($validated));
+        });
 
         return to_route('projects.show', $task->project)->with('status', 'Tarea actualizada.');
     }
@@ -93,7 +106,7 @@ class TaskController extends Controller
         return to_route('projects.show', $project)->with('status', 'Tarea eliminada.');
     }
 
-    public function store(Request $request, Project $project, OperationalAccess $access): RedirectResponse
+    public function store(Request $request, Project $project, OperationalAccess $access, TaskAssignments $assignments): RedirectResponse
     {
         abort_unless($access->canManageProject($request->user(), $project), 403);
         $validated = $request->validate([
@@ -101,7 +114,13 @@ class TaskController extends Controller
             'description' => ['nullable', 'string'],
             'blocked_reason' => ['nullable', 'string', 'max:2000'],
             'assigned_to' => ['nullable', 'exists:users,id'],
-            'status' => ['required', Rule::in(['todo', 'in_progress', 'blocked'])],
+            'assignments' => ['nullable', 'array'],
+            'assignments.*.user_id' => ['nullable', 'distinct', 'exists:users,id'],
+            'assignments.*.role' => ['nullable', Rule::in(array_keys(\App\Models\ProjectWorkload::roleOptions()))],
+            'assignments.*.work_date' => ['nullable', 'date'],
+            'assignments.*.estimated_hours' => ['nullable', 'numeric', 'min:0', 'max:24'],
+            'assignments.*.personal_priority' => ['nullable', 'integer', 'min:1', 'max:999'],
+            'status' => ['required', Rule::in(['todo', 'in_progress'])],
             'priority' => ['required', Rule::in(Task::priorityOptions())],
             'personal_priority' => ['nullable', 'integer', 'min:1', 'max:999'],
             'planned_for' => ['nullable', 'date'],
@@ -111,7 +130,7 @@ class TaskController extends Controller
         ]);
 
         $initialAttributes = collect($this->taskAttributes($validated))
-            ->except(['subtasks', 'blocked_reason', 'status'])
+            ->except(['subtasks', 'blocked_reason', 'status', 'assignments'])
             ->all();
 
         $task = $project->tasks()->create([
@@ -135,6 +154,8 @@ class TaskController extends Controller
             $task->update(app(TaskWorkflow::class)->transition($task, $validated['status'], $validated));
         }
 
+        $assignments->sync($task, $this->assignmentRows($validated), notes: $task->title);
+
         return to_route('projects.show', $project)->with('status', 'Tarea agregada.');
     }
 
@@ -143,9 +164,26 @@ class TaskController extends Controller
         abort_unless($access->canManageTask($request->user(), $task), 403);
         $validated = $request->validate([
             'planned_for' => ['required', 'date'],
+            'user_id' => ['nullable', 'integer', 'exists:users,id'],
         ]);
 
-        $task->update($validated);
+        $assignment = $task->assignments()
+            ->when(
+                filled($validated['user_id'] ?? null),
+                fn ($query) => $query->where('user_id', $validated['user_id'])
+            )
+            ->orderBy('id')
+            ->first();
+
+        DB::transaction(function () use ($task, $assignment, $validated): void {
+            if ($assignment) {
+                $assignment->update(['work_date' => $validated['planned_for']]);
+            }
+
+            if (! $assignment || $task->assigned_to === $assignment->user_id) {
+                $task->update(['planned_for' => $validated['planned_for']]);
+            }
+        });
 
         return back()->with('status', 'Día de carga actualizado.');
     }
@@ -193,38 +231,40 @@ class TaskController extends Controller
         $projectId = $task->project_id;
         abort_if($validated['status'] === 'finalized' && ! $access->canManageTask($request->user(), $task), 403);
 
-        $transition = $workflow->transition($task, $validated['status'], $validated);
+        DB::transaction(function () use ($access, $request, $task, $validated, $workflow, $projectId): void {
+            $transition = $workflow->transition($task, $validated['status'], $validated);
 
-        if (! $access->canManageTask($request->user(), $task)) {
-            $targetIndex = array_search($task->id, array_map('intval', $validated['ordered_ids']), true);
-            $task->update([
-                ...$transition,
-                'sort_order' => $targetIndex === false ? $task->sort_order : $targetIndex,
-            ]);
-            $workflow->syncProjectCompletion($task);
+            if (! $access->canManageTask($request->user(), $task)) {
+                $targetIndex = array_search($task->id, array_map('intval', $validated['ordered_ids']), true);
+                $task->update([
+                    ...$transition,
+                    'sort_order' => $targetIndex === false ? $task->sort_order : $targetIndex,
+                ]);
+                $workflow->syncProjectCompletion($task);
 
-            return response()->json(['message' => 'Tablero actualizado.']);
-        }
+                return;
+            }
 
-        $this->syncColumn(
-            $projectId,
-            $validated['status'],
-            $validated['ordered_ids'],
-            $task->id,
-            $transition,
-        );
-        $workflow->syncProjectCompletion($task->refresh());
-
-        if (
-            filled($validated['source_status'] ?? null)
-            && $validated['source_status'] !== $validated['status']
-        ) {
             $this->syncColumn(
                 $projectId,
-                $validated['source_status'],
-                $validated['source_ordered_ids'] ?? [],
+                $validated['status'],
+                $validated['ordered_ids'],
+                $task->id,
+                $transition,
             );
-        }
+            $workflow->syncProjectCompletion($task->refresh());
+
+            if (
+                filled($validated['source_status'] ?? null)
+                && $validated['source_status'] !== $validated['status']
+            ) {
+                $this->syncColumn(
+                    $projectId,
+                    $validated['source_status'],
+                    $validated['source_ordered_ids'] ?? [],
+                );
+            }
+        });
 
         return response()->json([
             'message' => 'Tablero actualizado.',
@@ -261,10 +301,30 @@ class TaskController extends Controller
 
     private function taskAttributes(array $validated): array
     {
-        $attributes = collect($validated)->except('estimated_hours')->all();
+        $attributes = collect($validated)
+            ->except(['estimated_hours', 'assignments', 'assigned_to', 'planned_for', 'personal_priority'])
+            ->all();
         $attributes['estimated_minutes'] = $this->estimatedMinutes($validated['estimated_hours'] ?? null);
 
         return $attributes;
+    }
+
+    private function assignmentRows(array $validated): array
+    {
+        if (array_key_exists('assignments', $validated)) {
+            return $validated['assignments'] ?? [];
+        }
+
+        if (! filled($validated['assigned_to'] ?? null)) {
+            return [];
+        }
+
+        return [[
+            'user_id' => $validated['assigned_to'],
+            'work_date' => $validated['planned_for'] ?? null,
+            'estimated_hours' => $validated['estimated_hours'] ?? null,
+            'personal_priority' => $validated['personal_priority'] ?? null,
+        ]];
     }
 
     private function estimatedMinutes(null|int|float|string $hours): ?int

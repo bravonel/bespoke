@@ -27,7 +27,7 @@
                 $sectionMeta = [
                     'today'       => ['label' => 'Hoy', 'description' => \App\Models\Task::formatEstimatedMinutes($todayEstimatedMinutes).' planeadas'],
                     'upcoming'    => ['label' => 'Próximas', 'description' => 'Planeadas después de hoy'],
-                    'unscheduled' => ['label' => 'Sin fecha de trabajo', 'description' => 'Tienen responsable pero no día asignado'],
+                    'unscheduled' => ['label' => 'Sin fecha de trabajo', 'description' => 'Tienen participantes pero no día asignado'],
                     'done'        => ['label' => 'Entregadas y finalizadas', 'description' => 'Fuera de la carga activa'],
                 ];
             @endphp
@@ -77,7 +77,7 @@
                                                     <span class="rounded-full bg-slate-950 px-2.5 py-1 text-xs font-bold text-white">Orden #{{ $task->personal_priority }}</span>
                                                 @endif
 
-                                                @if ($task->status === 'blocked' && $task->blocked_reason)
+                                                @if ($task->status === 'todo' && $task->blocked_reason)
                                                     <span class="w-full rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs normal-case tracking-normal text-rose-800">{{ $task->blocked_reason }}</span>
                                                 @endif
 

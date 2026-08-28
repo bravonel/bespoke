@@ -17,6 +17,7 @@ class ProjectWorkload extends Model
         'role',
         'work_date',
         'estimated_minutes',
+        'personal_priority',
         'notes',
     ];
 
@@ -25,6 +26,7 @@ class ProjectWorkload extends Model
         return [
             'work_date' => 'date',
             'estimated_minutes' => 'integer',
+            'personal_priority' => 'integer',
         ];
     }
 
@@ -46,11 +48,12 @@ class ProjectWorkload extends Model
     public static function roleOptions(): array
     {
         return [
-            'design' => 'Diseño',
-            'copy' => 'Redacción',
-            'social_media' => 'Redes sociales',
-            'medical' => 'Médico',
             'accounts' => 'Cuentas',
+            'medical' => 'Medical',
+            'design' => 'Diseño',
+            'copy' => 'Copy',
+            'social_media' => 'Social Media',
+            'client' => 'Cliente',
         ];
     }
 }

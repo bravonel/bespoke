@@ -34,8 +34,8 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Alejandro Lujambio',     'email' => 'alejandro_lujambio@bespokeadvertising.com.mx', 'area' => 'Médico',           'puesto' => 'Redactor médico'],
             ['name' => 'Andrea Cervantes',       'email' => 'andrea@bespokeadvertising.com.mx',              'area' => 'Médico',           'puesto' => 'Redactor médico'],
             ['name' => 'Daniela Cruz',           'email' => 'daniela@bespokeadvertising.com.mx',             'area' => 'Médico',           'puesto' => 'Redactor médico'],
-            // Redacción
-            ['name' => 'Arturo López',           'email' => 'arturodiaz@bespokeadvertising.com.mx',          'area' => 'Redacción',        'puesto' => 'Redacción / Corrección'],
+            // Copy
+            ['name' => 'Arturo López',           'email' => 'arturodiaz@bespokeadvertising.com.mx',          'area' => 'Copy',             'puesto' => 'Copy / Corrección'],
             // Redes sociales
             ['name' => 'Eduardo Gutiérrez',      'email' => 'eduardo@bespokeadvertising.com.mx',             'area' => 'Redes sociales',   'puesto' => 'Responsable de redes sociales'],
             ['name' => 'Daniela Vélez',          'email' => 'danielavelez@bespokeadvertising.com.mx',        'area' => 'Redes sociales',   'puesto' => 'Gestor de comunidad'],
@@ -47,14 +47,14 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($colaboradores as $data) {
-            User::updateOrCreate(
+            User::firstOrCreate(
                 ['email' => $data['email']],
                 [
-                    'name'              => $data['name'],
-                    'area'              => $data['area'],
-                    'puesto'            => $data['puesto'],
+                    'name' => $data['name'],
+                    'area' => $data['area'],
+                    'puesto' => $data['puesto'],
                     'daily_capacity_minutes' => 480,
-                    'password'          => $password,
+                    'password' => $password,
                     'email_verified_at' => now(),
                 ]
             );

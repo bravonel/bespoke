@@ -23,8 +23,14 @@
     <div class="shell space-y-7">
         <div class="grid gap-5 sm:grid-cols-2 xl:grid-cols-5">
             <div class="metric-card">
-                <div class="metric-label">Responsable</div>
-                <div class="mt-3 text-lg font-semibold text-slate-950">{{ $task->assignee?->name ?: 'Sin asignar' }}</div>
+                <div class="metric-label">Participantes</div>
+                <div class="mt-3 space-y-1 text-sm font-semibold text-slate-950">
+                    @forelse ($task->assignments as $assignment)
+                        <div>{{ $assignment->user?->name ?: 'Sin participante' }} · {{ \App\Models\Task::formatEstimatedMinutes($assignment->estimated_minutes) }}</div>
+                    @empty
+                        <div>Sin participantes</div>
+                    @endforelse
+                </div>
             </div>
             <div class="metric-card">
                 <div class="metric-label">Entrega</div>
@@ -71,10 +77,6 @@
                         <dt class="text-slate-500">Estatus</dt>
                         <dd><x-status-badge :value="$task->status" /></dd>
                     </div>
-                    <div class="flex justify-between gap-4">
-                        <dt class="text-slate-500">Responsable general</dt>
-                        <dd class="font-medium text-slate-900">{{ $task->project->owner?->name ?: 'Sin asignar' }}</dd>
-                    </div>
                 </dl>
 
                 <div class="mt-6 rounded-3xl bg-stone-50 p-5">
@@ -105,7 +107,7 @@
                             @endforeach
                         </select>
 
-                        <input name="blocked_reason" class="field mt-0" placeholder="Motivo si bloqueas">
+                        <input name="blocked_reason" class="field mt-0" placeholder="Motivo al regresar a Por hacer">
                         <input name="return_reason" class="field mt-0" placeholder="Qué debe corregirse si devuelves">
 
                         <button class="button-secondary">Guardar estado</button>
@@ -113,8 +115,8 @@
                     @endif
                 </div>
 
-                @if ($task->status === 'blocked' && $task->blocked_reason)
-                    <div class="mt-5 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm leading-6 text-rose-900"><strong>Bloqueo:</strong> {{ $task->blocked_reason }}</div>
+                @if ($task->status === 'todo' && $task->blocked_reason)
+                    <div class="mt-5 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm leading-6 text-rose-900"><strong>Por destrabar:</strong> {{ $task->blocked_reason }}</div>
                 @endif
 
                 @if ($task->return_reason)

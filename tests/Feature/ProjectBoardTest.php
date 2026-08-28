@@ -20,7 +20,7 @@ class ProjectBoardTest extends TestCase
 
     public function test_tasks_can_be_created_with_subtasks(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create(['role' => User::ROLE_ACCOUNTS]);
         $project = $this->makeProject($user);
 
         $response = $this->actingAs($user)->post(route('projects.tasks.store', $project), [
@@ -131,7 +131,7 @@ class ProjectBoardTest extends TestCase
             'project_type' => 'video',
             'priority' => 'normal',
             'status' => 'active',
-            'current_stage' => 'brief',
+            'current_stage' => 'initial',
         ]);
 
         $project = Project::query()->where('odt_code', 'ODT-13041')->firstOrFail();
@@ -143,7 +143,7 @@ class ProjectBoardTest extends TestCase
 
     public function test_custom_material_and_initial_activity_are_saved_as_a_board_task(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create(['role' => User::ROLE_ACCOUNTS]);
         $client = Client::create(['name' => 'Roche', 'status' => 'active']);
 
         $response = $this->actingAs($user)->post(route('projects.store'), [
@@ -153,14 +153,16 @@ class ProjectBoardTest extends TestCase
             'project_type_other' => 'Experiencia interactiva',
             'priority' => 'normal',
             'status' => 'active',
-            'current_stage' => 'brief',
+            'current_stage' => 'initial',
             'workloads' => [
                 'design' => [
-                    'user_id' => $user->id,
-                    'work_date' => '2026-07-17',
-                    'estimated_hours' => '3',
-                    'notes' => 'Preparar prototipo',
-                    'status' => 'blocked',
+                    'activity' => 'Preparar prototipo',
+                    'status' => 'todo',
+                    'participants' => [[
+                        'user_id' => $user->id,
+                        'work_date' => '2026-07-17',
+                        'estimated_hours' => '3',
+                    ]],
                 ],
             ],
         ]);
@@ -172,7 +174,7 @@ class ProjectBoardTest extends TestCase
         $this->assertSame('15001', $project->name);
         $this->assertSame('Experiencia interactiva', $project->project_type);
         $this->assertSame('Preparar prototipo', $task->title);
-        $this->assertSame('blocked', $task->status);
+        $this->assertSame('todo', $task->status);
         $this->assertSame(180, $task->estimated_minutes);
         $this->assertSame($task->id, $project->workloads()->firstOrFail()->task_id);
     }
@@ -190,7 +192,7 @@ class ProjectBoardTest extends TestCase
 
     public function test_project_filters_accept_multiple_clients_and_brands(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create(['role' => User::ROLE_ACCOUNTS]);
         $firstClient = Client::create(['name' => 'Cliente A', 'status' => 'active']);
         $secondClient = Client::create(['name' => 'Cliente B', 'status' => 'active']);
         $thirdClient = Client::create(['name' => 'Cliente C', 'status' => 'active']);
@@ -245,7 +247,7 @@ class ProjectBoardTest extends TestCase
 
     public function test_projects_can_store_client_context_and_workloads(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create(['role' => User::ROLE_ACCOUNTS]);
         $designer = User::factory()->create([
             'name' => 'Luis Cervantes',
             'area' => 'Diseño',
@@ -267,15 +269,17 @@ class ProjectBoardTest extends TestCase
             'reference_links' => 'https://contoso.sharepoint.com/proyecto',
             'priority' => 'normal',
             'status' => 'active',
-            'current_stage' => 'brief',
+            'current_stage' => 'initial',
             'starts_at' => '2026-07-09',
             'due_at' => '2026-07-15',
             'workloads' => [
                 'design' => [
-                    'user_id' => $designer->id,
-                    'work_date' => '2026-07-09',
-                    'estimated_hours' => '4',
-                    'notes' => 'Diseño de primera propuesta',
+                    'activity' => 'Diseño de primera propuesta',
+                    'participants' => [[
+                        'user_id' => $designer->id,
+                        'work_date' => '2026-07-09',
+                        'estimated_hours' => '4',
+                    ]],
                 ],
             ],
         ]);
@@ -350,7 +354,7 @@ class ProjectBoardTest extends TestCase
 
     public function test_user_daily_capacity_can_be_updated(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
         $person = User::factory()->create([
             'daily_capacity_minutes' => 480,
         ]);
@@ -361,6 +365,80 @@ class ProjectBoardTest extends TestCase
 
         $response->assertRedirect();
         $this->assertSame(720, $person->refresh()->daily_capacity_minutes);
+    }
+
+    public function test_only_accounts_and_admin_can_update_daily_capacity(): void
+    {
+        $direction = User::factory()->create(['role' => User::ROLE_DIRECTION]);
+        $person = User::factory()->create(['daily_capacity_minutes' => 480]);
+
+        $this->actingAs($direction)
+            ->patch(route('users.capacity.update', $person), ['daily_capacity_hours' => '12'])
+            ->assertForbidden();
+
+        $this->assertSame(480, $person->refresh()->daily_capacity_minutes);
+    }
+
+    public function test_shared_task_preserves_individual_hours_dates_and_order(): void
+    {
+        $accounts = User::factory()->create(['role' => User::ROLE_ACCOUNTS]);
+        $first = User::factory()->create(['name' => 'Diseñadora Uno', 'area' => 'Diseño']);
+        $second = User::factory()->create(['name' => 'Diseñador Dos', 'area' => 'Diseño']);
+        $project = $this->makeProject($accounts);
+
+        $this->actingAs($accounts)->post(route('projects.tasks.store', $project), [
+            'title' => 'Propuesta visual compartida',
+            'status' => 'todo',
+            'priority' => 'normal',
+            'assignments' => [
+                ['user_id' => $first->id, 'work_date' => '2026-08-28', 'estimated_hours' => '2', 'personal_priority' => 1],
+                ['user_id' => $second->id, 'work_date' => '2026-08-29', 'estimated_hours' => '3.5', 'personal_priority' => 4],
+            ],
+        ])->assertRedirect(route('projects.show', $project));
+
+        $task = Task::query()->where('title', 'Propuesta visual compartida')->firstOrFail();
+        $this->assertSame(1, Task::query()->where('title', 'Propuesta visual compartida')->count());
+        $this->assertSame(330, $task->estimated_minutes);
+        $this->assertDatabaseHas('project_workloads', [
+            'task_id' => $task->id,
+            'user_id' => $first->id,
+            'work_date' => '2026-08-28 00:00:00',
+            'estimated_minutes' => 120,
+            'personal_priority' => 1,
+        ]);
+        $this->assertDatabaseHas('project_workloads', [
+            'task_id' => $task->id,
+            'user_id' => $second->id,
+            'work_date' => '2026-08-29 00:00:00',
+            'estimated_minutes' => 210,
+            'personal_priority' => 4,
+        ]);
+
+        $dashboard = $this->actingAs($accounts)->get(route('dashboard', ['date' => '2026-08-28']));
+        $this->assertSame(120, $dashboard->viewData('dailyLoadRows')->firstWhere('assignee.id', $first->id)['estimated_minutes']);
+    }
+
+    public function test_brand_is_stored_on_the_first_project_submission(): void
+    {
+        $accounts = User::factory()->create(['role' => User::ROLE_ACCOUNTS]);
+        $client = Client::create(['name' => 'Cliente Marca', 'status' => 'active']);
+        $brand = Brand::create(['client_id' => $client->id, 'name' => 'Marca Elegida', 'status' => 'active']);
+
+        $this->actingAs($accounts)->post(route('projects.store'), [
+            'client_id' => $client->id,
+            'brand_id' => $brand->id,
+            'odt_code' => 'ODT-MARCA-1',
+            'project_type' => 'video',
+            'priority' => 'normal',
+            'status' => 'active',
+            'current_stage' => 'initial',
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('projects', [
+            'odt_code' => 'ODT-MARCA-1',
+            'brand_id' => $brand->id,
+            'owner_id' => $accounts->id,
+        ]);
     }
 
     public function test_project_edit_button_has_modal_fallback_hook(): void
@@ -595,7 +673,8 @@ class ProjectBoardTest extends TestCase
             'project_id' => $project->id,
             'title' => 'Redactar cierre',
             'description' => 'Version final para cliente.',
-            'status' => 'blocked',
+            'status' => 'todo',
+            'blocked_reason' => 'Falta confirmación del cliente.',
             'priority' => 'high',
             'sort_order' => 0,
         ]);

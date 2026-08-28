@@ -27,9 +27,12 @@ class DashboardController extends Controller
             'brands' => Brand::count(),
             'projects' => (clone $access->projects($user))->count(),
             'active_projects' => (clone $access->projects($user))->whereIn('status', ['active', 'in_review'])->count(),
-            'open_tasks' => (clone $access->tasks($user))->whereIn('status', ['todo', 'in_progress', 'blocked'])->count(),
-            'my_tasks' => Task::where('assigned_to', auth()->id())
-                ->whereIn('status', ['todo', 'in_progress', 'blocked'])
+            'open_tasks' => (clone $access->tasks($user))->whereIn('status', ['todo', 'in_progress'])->count(),
+            'my_tasks' => Task::query()
+                ->where(fn ($query) => $query
+                    ->where('assigned_to', auth()->id())
+                    ->orWhereHas('assignments', fn ($assignment) => $assignment->where('user_id', auth()->id())))
+                ->whereIn('status', ['todo', 'in_progress'])
                 ->count(),
         ];
 
@@ -42,24 +45,33 @@ class DashboardController extends Controller
             ->get();
 
         $recentTasks = $access->tasks($user)
-            ->with(['project', 'assignee'])
+            ->with(['project', 'assignee', 'assignments.user'])
             ->latest()
             ->limit(8)
             ->get();
 
         $dailyTasksQuery = $access->tasks($user)
-            ->with(['assignee', 'project.client', 'project.brand'])
-            ->whereDate('planned_for', $selectedDate->toDateString())
-            ->orderByRaw("CASE status WHEN 'blocked' THEN 0 WHEN 'in_progress' THEN 1 WHEN 'todo' THEN 2 ELSE 3 END")
+            ->with(['assignee', 'assignments.user', 'project.client', 'project.brand'])
+            ->where(function ($query) use ($selectedDate): void {
+                $query->whereDate('planned_for', $selectedDate->toDateString())
+                    ->orWhereHas('assignments', fn ($assignment) => $assignment
+                        ->whereDate('work_date', $selectedDate->toDateString()));
+            })
+            ->orderByRaw("CASE WHEN status = 'todo' AND blocked_reason IS NOT NULL THEN 0 WHEN status = 'in_progress' THEN 1 WHEN status = 'todo' THEN 2 ELSE 3 END")
             ->orderBy('due_at')
             ->orderBy('id');
 
         if ($areaFilter !== '') {
-            $dailyTasksQuery->whereHas('assignee', fn ($query) => $query->where('area', $areaFilter));
+            $dailyTasksQuery->where(function ($query) use ($areaFilter): void {
+                $query->whereHas('assignee', fn ($user) => $user->where('area', $areaFilter))
+                    ->orWhereHas('assignments.user', fn ($user) => $user->where('area', $areaFilter));
+            });
         }
 
         if ($userFilter) {
-            $dailyTasksQuery->where('assigned_to', $userFilter);
+            $dailyTasksQuery->where(fn ($query) => $query
+                ->where('assigned_to', $userFilter)
+                ->orWhereHas('assignments', fn ($assignment) => $assignment->where('user_id', $userFilter)));
         }
 
         $dailyTasks = $dailyTasksQuery->get();
@@ -83,8 +95,37 @@ class DashboardController extends Controller
 
         $dailyWorkloads = $dailyWorkloadsQuery->get();
 
-        $dailyActivities = $dailyTasks
-            ->map(fn (Task $task) => [
+        $dailyTaskActivities = $dailyTasks->flatMap(function (Task $task) use ($selectedDate, $areaFilter, $userFilter) {
+            $assignments = $task->assignments
+                ->filter(fn (ProjectWorkload $assignment) => $assignment->work_date?->isSameDay($selectedDate) ?? false)
+                ->filter(fn (ProjectWorkload $assignment) => $areaFilter === '' || $assignment->user?->area === $areaFilter)
+                ->filter(fn (ProjectWorkload $assignment) => ! $userFilter || $assignment->user_id === $userFilter);
+
+            if ($assignments->isNotEmpty()) {
+                return $assignments->map(fn (ProjectWorkload $assignment) => [
+                    'type' => 'task',
+                    'label' => 'Tarea',
+                    'title' => $task->title,
+                    'project' => $task->project,
+                    'assignee' => $assignment->user,
+                    'user_id' => $assignment->user_id,
+                    'role' => ProjectWorkload::roleOptions()[$assignment->role] ?? $assignment->role,
+                    'status' => $task->status,
+                    'estimated_minutes' => $assignment->estimated_minutes,
+                    'activity_date' => $assignment->work_date,
+                    'due_at' => $task->due_at,
+                    'is_blocked' => $task->status === 'todo' && filled($task->blocked_reason),
+                    'is_overdue' => $this->isOverdueForSelectedDate($task->due_at, $task->status, $selectedDate),
+                    'missing_estimate' => $assignment->estimated_minutes === null,
+                    'task' => $task,
+                ]);
+            }
+
+            if (! $task->planned_for?->isSameDay($selectedDate)) {
+                return collect();
+            }
+
+            return collect([[
                 'type' => 'task',
                 'label' => 'Tarea',
                 'title' => $task->title,
@@ -96,11 +137,14 @@ class DashboardController extends Controller
                 'estimated_minutes' => $task->estimated_minutes,
                 'activity_date' => $task->planned_for,
                 'due_at' => $task->due_at,
-                'is_blocked' => $task->status === 'blocked',
+                'is_blocked' => $task->status === 'todo' && filled($task->blocked_reason),
                 'is_overdue' => $this->isOverdueForSelectedDate($task->due_at, $task->status, $selectedDate),
                 'missing_estimate' => $task->estimated_minutes === null,
                 'task' => $task,
-            ])
+            ]]);
+        });
+
+        $dailyActivities = $dailyTaskActivities
             ->concat($dailyWorkloads->map(fn (ProjectWorkload $workload) => [
                 'type' => 'workload',
                 'label' => 'Carga',
@@ -170,6 +214,7 @@ class DashboardController extends Controller
             ],
             'dailyLoadRows' => $dailyLoadRows,
             'dailySummary' => $dailySummary,
+            'canManageCapacity' => $access->canManageCapacity($user),
         ]);
     }
 

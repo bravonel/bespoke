@@ -39,7 +39,7 @@
             cardVisible(card) {
                 const a = this.boardFilter.assignee;
                 const p = this.boardFilter.priority;
-                if (a && card.dataset.assignee !== a) return false;
+                if (a && !String(card.dataset.assignee || '').split('|').includes(a)) return false;
                 if (p && card.dataset.priority !== p) return false;
                 return true;
             },
@@ -77,7 +77,7 @@
                 <div class="metric-value">{{ $boardSummary['overdue_tasks'] }}</div>
             </div>
             <div class="metric-card">
-                <div class="metric-label">Sin responsable</div>
+                <div class="metric-label">Sin participantes</div>
                 <div class="metric-value">{{ $boardSummary['unassigned_tasks'] }}</div>
             </div>
             <div class="metric-card">
@@ -100,8 +100,8 @@
                             <dd class="font-medium text-slate-900">{{ $project->odt_code ?: 'Sin ODT' }}</dd>
                         </div>
                         <div class="flex items-center gap-2">
-                            <dt class="text-slate-500">Responsable</dt>
-                            <dd class="font-medium text-slate-900">{{ $project->owner?->name ?: 'Sin asignar' }}</dd>
+                            <dt class="text-slate-500">Participantes</dt>
+                            <dd class="font-medium text-slate-900">{{ $project->workloads->pluck('user.name')->filter()->unique()->join(', ') ?: 'Sin asignar' }}</dd>
                         </div>
                         <div class="flex items-center gap-2">
                             <dt class="text-slate-500">Prioridad</dt>
@@ -221,7 +221,7 @@
         @if ($project->workloads->isNotEmpty())
             <section class="panel p-6">
                 <div class="mb-5">
-                    <h2 class="text-lg font-semibold text-slate-950">Cargas por responsable</h2>
+                    <h2 class="text-lg font-semibold text-slate-950">Cargas por participante</h2>
                     <p class="mt-1 text-sm text-slate-500">Horas iniciales asignadas por rol para alimentar la carga diaria.</p>
                 </div>
 
@@ -230,7 +230,7 @@
                         <thead class="text-left text-xs uppercase tracking-[0.16em] text-slate-400">
                             <tr>
                                 <th class="py-2 pr-4 font-semibold">Rol</th>
-                                <th class="py-2 pr-4 font-semibold">Responsable</th>
+                                <th class="py-2 pr-4 font-semibold">Participante</th>
                                 <th class="py-2 pr-4 font-semibold">Día de carga</th>
                                 <th class="py-2 pr-4 font-semibold">Horas</th>
                                 <th class="py-2 font-semibold">Actividad</th>
@@ -265,7 +265,7 @@
                         x-model="boardFilter.assignee"
                         class="field mt-0 py-2 text-sm min-w-[9rem]"
                     >
-                        <option value="">Todos los responsables</option>
+                        <option value="">Todos los participantes</option>
                         @foreach ($users->groupBy('area') as $area => $areaUsers)
                             <optgroup label="{{ $area ? \App\Support\OperationalLabels::get($area) : 'Sin área' }}">
                                 @foreach ($areaUsers as $user)
@@ -329,19 +329,19 @@
 
                                 <article
                                     class="task-card task-card--compact"
-                                    draggable="{{ $canManageProject || $task->assigned_to === auth()->id() ? 'true' : 'false' }}"
+                                    draggable="{{ $canManageProject || in_array(auth()->id(), $task->assignedUserIds(), true) ? 'true' : 'false' }}"
                                     data-task-card
                                     data-task-id="{{ $task->id }}"
                                     data-move-url="{{ route('tasks.move', $task) }}"
                                     data-detail-url="{{ route('tasks.show', $task) }}"
-                                    data-assignee="{{ $task->assignee?->name ?? '' }}"
+                                    data-assignee="{{ $task->assignments->pluck('user.name')->filter()->unique()->join('|') ?: ($task->assignee?->name ?? '') }}"
                                     data-priority="{{ $task->priority }}"
                                 >
                                     <div class="flex items-start gap-3">
                                         <div class="min-w-0 flex-1">
                                             <button type="button" class="task-card__link text-left" data-open-task>
                                                 <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                                                    {{ $task->assignee?->name ?: 'Sin asignar' }}
+                                                    {{ $task->assignments->pluck('user.name')->filter()->unique()->join(', ') ?: ($task->assignee?->name ?: 'Sin asignar') }}
                                                 </p>
                                                 <h3 class="mt-1.5 text-sm font-semibold text-slate-950">{{ $task->title }}</h3>
                                                 @if ($task->personal_priority)
@@ -370,14 +370,14 @@
                                                         </span>
                                                     @endif
                                                 </div>
-                                                @if ($task->status === 'blocked' && $task->blocked_reason)
+                                                @if ($task->status === 'todo' && $task->blocked_reason)
                                                     <p class="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs leading-5 text-rose-800">{{ $task->blocked_reason }}</p>
                                                 @endif
                                             </button>
                                         </div>
 
                                         <div class="flex shrink-0 flex-col items-end gap-2">
-                                            @if ($canManageProject || $task->assigned_to === auth()->id())
+                                            @if ($canManageProject || in_array(auth()->id(), $task->assignedUserIds(), true))
                                                 <span class="drag-handle hidden md:inline-flex">Arrastrar</span>
                                             @endif
                                         </div>
@@ -447,20 +447,6 @@
                         'project' => $project,
                         'fieldPrefix' => 'ep-',
                     ])
-
-                    <div>
-                        <label class="field-label" for="ep-owner">Responsable</label>
-                        <select id="ep-owner" name="owner_id" class="field">
-                            <option value="">Sin asignar</option>
-                            @foreach ($users->groupBy('area') as $area => $areaUsers)
-                                <optgroup label="{{ $area ? \App\Support\OperationalLabels::get($area) : 'Sin área' }}">
-                                    @foreach ($areaUsers as $user)
-                                        <option value="{{ $user->id }}" @selected($project->owner_id == $user->id)>{{ $user->name }}</option>
-                                    @endforeach
-                                </optgroup>
-                            @endforeach
-                        </select>
-                    </div>
 
                     <div>
                         <label class="field-label" for="ep-status">Estatus</label>
@@ -574,7 +560,7 @@
                 <div class="modal-header flex items-start justify-between gap-4">
                     <div>
                         <h2 class="text-lg font-semibold text-slate-950">Nueva tarea</h2>
-                        <p class="mt-1 text-sm text-slate-500">Crea el pendiente con responsable, fecha y lista de pendientes desde el arranque para que el tablero nazca ordenado.</p>
+                        <p class="mt-1 text-sm text-slate-500">Crea el pendiente con participantes, fechas y lista de pendientes desde el arranque para que el tablero nazca ordenado.</p>
                     </div>
                     <button type="button" @click="taskModal = false" class="mt-0.5 shrink-0 text-slate-400 hover:text-slate-700">
                         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -597,34 +583,8 @@
                         </div>
 
                         <div>
-                            <label class="field-label" for="task-assigned-to">Asignado a</label>
-                            <select id="task-assigned-to" name="assigned_to" class="field">
-                                <option value="">Sin asignar</option>
-                                @foreach ($users->groupBy('area') as $area => $areaUsers)
-                                    <optgroup label="{{ $area ? \App\Support\OperationalLabels::get($area) : 'Sin área' }}">
-                                        @foreach ($areaUsers as $user)
-                                            <option value="{{ $user->id }}" @selected(old('assigned_to') == $user->id)>{{ $user->name }}{{ $user->puesto ? ' · ' . \App\Support\OperationalLabels::get($user->puesto) : '' }}</option>
-                                        @endforeach
-                                    </optgroup>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div>
                             <label class="field-label" for="task-due-at">Fecha de entrega</label>
                             <input id="task-due-at" type="date" name="due_at" class="field" value="{{ old('due_at') }}">
-                        </div>
-
-                        <div>
-                            <label class="field-label" for="task-planned-for">Día de carga</label>
-                            <input id="task-planned-for" type="date" name="planned_for" class="field" value="{{ old('planned_for', today()->format('Y-m-d')) }}">
-                            <x-input-error :messages="$errors->get('planned_for')" class="mt-2" />
-                        </div>
-
-                        <div>
-                            <label class="field-label" for="task-estimated-hours">Horas estimadas</label>
-                            <input id="task-estimated-hours" type="number" min="0" max="24" step="0.25" name="estimated_hours" class="field" value="{{ old('estimated_hours') }}">
-                            <x-input-error :messages="$errors->get('estimated_hours')" class="mt-2" />
                         </div>
 
                         <div>
@@ -647,16 +607,11 @@
                             </select>
                         </div>
 
-                        <div>
-                            <label class="field-label" for="task-personal-priority">Orden para el responsable</label>
-                            <input id="task-personal-priority" type="number" min="1" max="999" name="personal_priority" class="field" value="{{ old('personal_priority') }}" placeholder="1, 2, 3…">
-                            <p class="mt-1 text-xs text-slate-500">Es independiente para cada colaborador.</p>
-                        </div>
-
                         <div class="lg:col-span-2">
-                            <label class="field-label" for="task-blocked-reason">Motivo del bloqueo</label>
-                            <textarea id="task-blocked-reason" name="blocked_reason" rows="2" class="field" placeholder="Obligatorio si la tarea inicia bloqueada">{{ old('blocked_reason') }}</textarea>
-                            <x-input-error :messages="$errors->get('blocked_reason')" class="mt-2" />
+                            @include('tasks._assignment-fields', [
+                                'assignmentRows' => old('assignments', []),
+                                'users' => $users,
+                            ])
                         </div>
 
                         <div class="lg:col-span-2">

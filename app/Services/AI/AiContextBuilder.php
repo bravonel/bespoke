@@ -13,7 +13,7 @@ use Illuminate\Support\Str;
 
 class AiContextBuilder
 {
-    private const OPEN_TASK_STATUSES = ['todo', 'in_progress', 'blocked'];
+    private const OPEN_TASK_STATUSES = ['todo', 'in_progress'];
 
     public function __construct(private readonly OperationalAccess $access) {}
 
@@ -53,7 +53,10 @@ class AiContextBuilder
                         ->whereIn('status', self::OPEN_TASK_STATUSES)
                         ->whereDate('due_at', '<', $today->toDateString())
                         ->count(),
-                    'tareas_bloqueadas' => $this->access->tasks($user)->where('status', 'blocked')->count(),
+                    'tareas_por_destrabar' => $this->access->tasks($user)
+                        ->where('status', 'todo')
+                        ->whereNotNull('blocked_reason')
+                        ->count(),
                 ],
                 'proyectos_relevantes' => $projects->map(fn (Project $project) => $this->projectSnapshot($project))->all(),
                 'tareas_relevantes' => $tasks->map(fn (Task $task) => $this->taskSnapshot($task))->all(),
@@ -116,7 +119,7 @@ class AiContextBuilder
     private function relevantTasks(User $user, Collection $projectIds, Collection $terms): Collection
     {
         return $this->access->tasks($user)
-            ->with(['project.client', 'project.brand', 'assignee'])
+            ->with(['project.client', 'project.brand', 'assignee', 'assignments.user'])
             ->when($projectIds->isNotEmpty(), fn ($query) => $query->whereIn('project_id', $projectIds))
             ->when($projectIds->isEmpty(), fn ($query) => $query->whereIn('status', self::OPEN_TASK_STATUSES))
             ->when($terms->isNotEmpty(), function ($query) use ($terms) {
@@ -128,7 +131,7 @@ class AiContextBuilder
                     });
                 });
             })
-            ->orderByRaw("CASE status WHEN 'blocked' THEN 0 WHEN 'in_progress' THEN 1 WHEN 'todo' THEN 2 ELSE 3 END")
+            ->orderByRaw("CASE WHEN status = 'todo' AND blocked_reason IS NOT NULL THEN 0 WHEN status = 'in_progress' THEN 1 WHEN status = 'todo' THEN 2 ELSE 3 END")
             ->orderByRaw('due_at is null')
             ->orderBy('due_at')
             ->limit(18)
@@ -139,23 +142,46 @@ class AiContextBuilder
     {
         $date = today()->toDateString();
         $tasks = $this->access->tasks($user)
-            ->with(['assignee', 'project.client', 'project.brand'])
-            ->whereDate('planned_for', $date)
+            ->with(['assignee', 'assignments.user', 'project.client', 'project.brand'])
+            ->where(fn ($query) => $query
+                ->whereDate('planned_for', $date)
+                ->orWhereHas('assignments', fn ($assignment) => $assignment->whereDate('work_date', $date)))
             ->get()
-            ->map(fn (Task $task) => [
-                'user_id' => $task->assigned_to,
-                'assignee' => $task->assignee,
-                'minutes' => $task->estimated_minutes,
-                'title' => $task->title,
-                'project' => $task->project?->name,
-                'status' => $task->status,
-                'due_at' => $task->due_at,
-                'missing_estimate' => $task->estimated_minutes === null,
-            ]);
+            ->flatMap(function (Task $task) use ($date) {
+                $assignments = $task->assignments
+                    ->filter(fn (ProjectWorkload $assignment) => $assignment->work_date?->toDateString() === $date);
+
+                if ($assignments->isNotEmpty()) {
+                    return $assignments->map(fn (ProjectWorkload $assignment) => [
+                        'user_id' => $assignment->user_id,
+                        'assignee' => $assignment->user,
+                        'minutes' => $assignment->estimated_minutes,
+                        'title' => $task->title,
+                        'project' => $task->project?->name,
+                        'status' => $task->status,
+                        'blocked_reason' => $task->blocked_reason,
+                        'due_at' => $task->due_at,
+                        'missing_estimate' => $assignment->estimated_minutes === null,
+                    ]);
+                }
+
+                return [[
+                    'user_id' => $task->assigned_to,
+                    'assignee' => $task->assignee,
+                    'minutes' => $task->estimated_minutes,
+                    'title' => $task->title,
+                    'project' => $task->project?->name,
+                    'status' => $task->status,
+                    'blocked_reason' => $task->blocked_reason,
+                    'due_at' => $task->due_at,
+                    'missing_estimate' => $task->estimated_minutes === null,
+                ]];
+            });
 
         $workloads = ProjectWorkload::query()
             ->with(['user', 'project.client', 'project.brand'])
             ->whereIn('project_id', $this->access->projects($user)->select('projects.id'))
+            ->whereNull('task_id')
             ->whereDate('work_date', $date)
             ->get()
             ->map(fn (ProjectWorkload $workload) => [
@@ -165,6 +191,7 @@ class AiContextBuilder
                 'title' => $workload->notes ?: (ProjectWorkload::roleOptions()[$workload->role] ?? 'Carga asignada'),
                 'project' => $workload->project?->name,
                 'status' => 'carga',
+                'blocked_reason' => null,
                 'due_at' => $workload->project?->due_at,
                 'missing_estimate' => $workload->estimated_minutes === null,
             ]);
@@ -185,7 +212,9 @@ class AiContextBuilder
                     'capacidad_dia' => $this->formatMinutes($capacity),
                     'porcentaje_capacidad' => $capacity > 0 ? (int) round(($estimated / $capacity) * 100) : null,
                     'actividades' => $rows->count(),
-                    'bloqueadas' => $rows->where('status', 'blocked')->count(),
+                    'por_destrabar' => $rows
+                        ->filter(fn (array $row) => $row['status'] === 'todo' && filled($row['blocked_reason'] ?? null))
+                        ->count(),
                     'vencidas' => $rows
                         ->filter(fn (array $row) => $row['due_at'] && ! in_array($row['status'], Task::inactiveStatuses(), true) && $row['due_at']->isPast())
                         ->count(),
@@ -244,7 +273,7 @@ class AiContextBuilder
     private function projectQuery(User $user)
     {
         return $this->access->projects($user)
-            ->with(['client', 'brand', 'owner'])
+            ->with(['client', 'brand'])
             ->withCount([
                 'tasks',
                 'tasks as open_tasks_count' => fn ($query) => $query->whereIn('status', self::OPEN_TASK_STATUSES),
@@ -264,7 +293,6 @@ class AiContextBuilder
             'codigo_interno' => $project->code,
             'cliente' => $project->client?->name,
             'marca' => $project->brand?->name,
-            'responsable' => $project->owner?->name ?: 'Sin responsable',
             'estatus' => OperationalLabels::get($project->status),
             'etapa' => OperationalLabels::get($project->current_stage),
             'prioridad' => OperationalLabels::get($project->priority),
@@ -290,7 +318,14 @@ class AiContextBuilder
             'odt' => $task->project?->odt_code ?: $task->project?->code,
             'cliente' => $task->project?->client?->name,
             'marca' => $task->project?->brand?->name,
-            'responsable' => $task->assignee?->name ?: 'Sin responsable',
+            'participantes' => $task->assignments->map(fn (ProjectWorkload $assignment) => [
+                'nombre' => $assignment->user?->name,
+                'dia_carga' => $assignment->work_date?->toDateString(),
+                'horas' => $assignment->estimated_minutes === null
+                    ? 'Sin horas'
+                    : $this->formatMinutes($assignment->estimated_minutes),
+                'orden' => $assignment->personal_priority,
+            ])->values()->all(),
             'estatus' => OperationalLabels::get($task->status),
             'prioridad' => OperationalLabels::get($task->priority),
             'dia_carga' => $task->planned_for?->toDateString(),

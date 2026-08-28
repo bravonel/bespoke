@@ -3,14 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\Access\OperationalAccess;
 use App\Services\Audit\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class UserCapacityController extends Controller
 {
-    public function update(Request $request, User $user, AuditLogger $audit): RedirectResponse
+    public function update(Request $request, User $user, AuditLogger $audit, OperationalAccess $access): RedirectResponse
     {
+        abort_unless($access->canManageCapacity($request->user()), 403);
+
         $validated = $request->validate([
             'daily_capacity_hours' => ['required', 'numeric', 'min:0.25', 'max:24'],
         ]);

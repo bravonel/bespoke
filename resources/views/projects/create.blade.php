@@ -39,16 +39,6 @@
                     ])
 
                     <div>
-                        <label class="field-label" for="project-owner">Responsable</label>
-                        <select id="project-owner" name="owner_id" class="field">
-                            <option value="">Asignarme a mí</option>
-                            @foreach ($owners as $owner)
-                                <option value="{{ $owner->id }}" @selected(old('owner_id') == $owner->id)>{{ $owner->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div>
                         <label class="field-label" for="project-priority">Prioridad</label>
                         <select id="project-priority" name="priority" class="field">
                             @foreach ($priorities as $priority)

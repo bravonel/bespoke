@@ -29,6 +29,17 @@ class OperationalAccess
         return $this->hasGlobalAccess($user);
     }
 
+    public function canManageCollaborators(User $user): bool
+    {
+        return $user->isActiveForAccess() && $user->isAdmin();
+    }
+
+    public function canManageCapacity(User $user): bool
+    {
+        return $user->isActiveForAccess()
+            && $user->hasRole([User::ROLE_ADMIN, User::ROLE_ACCOUNTS]);
+    }
+
     public function canViewProject(User $user, Project $project): bool
     {
         return $this->projects($user)->whereKey($project)->exists();
@@ -51,7 +62,9 @@ class OperationalAccess
 
     public function canOperateTask(User $user, Task $task): bool
     {
-        return $this->canManageTask($user, $task) || $task->assigned_to === $user->id;
+        return $this->canManageTask($user, $task)
+            || $task->assigned_to === $user->id
+            || $task->assignments()->where('user_id', $user->id)->exists();
     }
 
     public function projects(User $user): Builder
@@ -68,7 +81,9 @@ class OperationalAccess
                 ->orWhereHas('memberships', fn (Builder $membership) => $membership
                     ->where('user_id', $user->id)
                     ->where('status', ProjectMember::STATUS_ACTIVE))
-                ->orWhereHas('tasks', fn (Builder $task) => $task->where('assigned_to', $user->id));
+                ->orWhereHas('tasks', fn (Builder $task) => $task
+                    ->where('assigned_to', $user->id)
+                    ->orWhereHas('assignments', fn (Builder $assignment) => $assignment->where('user_id', $user->id)));
         });
     }
 
@@ -83,6 +98,7 @@ class OperationalAccess
         return $query->where(function (Builder $query) use ($user): void {
             $query
                 ->where('assigned_to', $user->id)
+                ->orWhereHas('assignments', fn (Builder $assignment) => $assignment->where('user_id', $user->id))
                 ->orWhereHas('project', fn (Builder $project) => $project
                     ->where('owner_id', $user->id)
                     ->orWhereHas('memberships', fn (Builder $membership) => $membership

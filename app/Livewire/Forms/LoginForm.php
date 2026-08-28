@@ -23,6 +23,14 @@ class LoginForm extends Form
     public bool $remember = false;
 
     /**
+     * Normalize the identifier before validation and authentication.
+     */
+    public function normalizeEmail(): void
+    {
+        $this->email = Str::lower(trim($this->email));
+    }
+
+    /**
      * Attempt to authenticate the request's credentials.
      *
      * @throws ValidationException

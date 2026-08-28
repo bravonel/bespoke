@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Client;
 use App\Models\Project;
+use App\Models\ProjectWorkload;
 use App\Models\Subtask;
 use App\Models\Task;
 use App\Models\User;
@@ -14,22 +15,22 @@ class TaskWorkflowTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_blocking_requires_an_actionable_reason(): void
+    public function test_returning_in_progress_work_to_todo_requires_an_actionable_reason(): void
     {
-        [$manager, $project, $task] = $this->workflowFixture();
+        [$manager, $project, $task] = $this->workflowFixture('in_progress');
 
         $this->actingAs($manager)
-            ->patch(route('tasks.update-status', $task), ['status' => 'blocked'])
+            ->patch(route('tasks.update-status', $task), ['status' => 'todo'])
             ->assertSessionHasErrors('blocked_reason');
 
         $this->actingAs($manager)
             ->patch(route('tasks.update-status', $task), [
-                'status' => 'blocked',
+                'status' => 'todo',
                 'blocked_reason' => 'Falta el logo; Cuentas debe solicitarlo al cliente.',
             ])
             ->assertRedirect(route('projects.show', $project));
 
-        $this->assertSame('blocked', $task->refresh()->status);
+        $this->assertSame('todo', $task->refresh()->status);
         $this->assertSame('Falta el logo; Cuentas debe solicitarlo al cliente.', $task->blocked_reason);
     }
 
@@ -132,6 +133,36 @@ class TaskWorkflowTest extends TestCase
         $this->actingAs($outsider)
             ->post(route('tasks.comments.store', $task), ['body' => 'No debo entrar.'])
             ->assertForbidden();
+    }
+
+    public function test_every_participant_on_a_shared_task_can_operate_it(): void
+    {
+        [$manager, $project, $task] = $this->workflowFixture();
+        $designer = User::factory()->create(['role' => User::ROLE_DESIGN]);
+        $copy = User::factory()->create(['role' => User::ROLE_DESIGN, 'area' => 'Copy']);
+
+        foreach ([[$designer, 'design'], [$copy, 'copy']] as [$participant, $role]) {
+            ProjectWorkload::create([
+                'project_id' => $project->id,
+                'task_id' => $task->id,
+                'user_id' => $participant->id,
+                'role' => $role,
+                'estimated_minutes' => 60,
+            ]);
+        }
+
+        $this->actingAs($designer)
+            ->patch(route('tasks.update-status', $task), ['status' => 'in_progress'])
+            ->assertRedirect(route('projects.show', $project));
+
+        $this->actingAs($copy)
+            ->patch(route('tasks.update-status', $task), [
+                'status' => 'todo',
+                'blocked_reason' => 'Falta una aprobación para continuar.',
+            ])
+            ->assertRedirect(route('projects.show', $project));
+
+        $this->assertSame('todo', $task->refresh()->status);
     }
 
     private function workflowFixture(string $status = 'todo'): array

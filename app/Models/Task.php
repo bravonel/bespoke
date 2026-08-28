@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Task extends Model
@@ -56,6 +57,18 @@ class Task extends Model
         return $this->belongsTo(User::class, 'assigned_to');
     }
 
+    public function assignments(): HasMany
+    {
+        return $this->hasMany(ProjectWorkload::class);
+    }
+
+    public function assignees(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'project_workloads', 'task_id', 'user_id')
+            ->withPivot(['id', 'role', 'work_date', 'estimated_minutes', 'personal_priority', 'notes'])
+            ->withTimestamps();
+    }
+
     public function subtasks(): HasMany
     {
         return $this->hasMany(Subtask::class);
@@ -76,10 +89,6 @@ class Task extends Model
             'in_progress' => [
                 'label' => 'En proceso',
                 'description' => 'Lo que hoy está en manos del equipo.',
-            ],
-            'blocked' => [
-                'label' => 'Bloqueado',
-                'description' => 'Lo que necesita destrabe o respuesta.',
             ],
             'done' => [
                 'label' => 'Entregado',
@@ -119,6 +128,21 @@ class Task extends Model
     public static function inactiveStatuses(): array
     {
         return ['done', 'finalized'];
+    }
+
+    public function assignedUserIds(): array
+    {
+        $ids = $this->assignments
+            ->pluck('user_id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique();
+
+        if ($this->assigned_to) {
+            $ids->push((int) $this->assigned_to);
+        }
+
+        return $ids->unique()->values()->all();
     }
 
     public function isClosed(): bool

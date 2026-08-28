@@ -18,9 +18,9 @@ class TaskWorkflow
         $blockedReason = trim((string) ($context['blocked_reason'] ?? ''));
         $returnReason = trim((string) ($context['return_reason'] ?? ''));
 
-        if ($nextStatus === 'blocked' && $blockedReason === '') {
+        if ($currentStatus === 'in_progress' && $nextStatus === 'todo' && $blockedReason === '') {
             throw ValidationException::withMessages([
-                'blocked_reason' => 'Explica qué impide avanzar y quién debe destrabarlo.',
+                'blocked_reason' => 'Explica qué impide avanzar antes de regresar la tarea a Por hacer.',
             ]);
         }
 
@@ -46,7 +46,9 @@ class TaskWorkflow
 
         $attributes = [
             'status' => $nextStatus,
-            'blocked_reason' => $nextStatus === 'blocked' ? $blockedReason : null,
+            'blocked_reason' => $nextStatus === 'todo'
+                ? ($blockedReason !== '' ? $blockedReason : $task->blocked_reason)
+                : null,
         ];
 
         if ($returnReason !== '') {

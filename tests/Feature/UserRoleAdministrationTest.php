@@ -24,10 +24,9 @@ class UserRoleAdministrationTest extends TestCase
 
     public function test_last_active_admin_cannot_be_demoted_or_deactivated(): void
     {
-        $actor = User::factory()->create(['role' => User::ROLE_DIRECTION]);
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
 
-        $this->actingAs($actor)->patch(route('collaborators.update', $admin), [
+        $this->actingAs($admin)->patch(route('collaborators.update', $admin), [
             'name' => $admin->name,
             'email' => $admin->email,
             'area' => $admin->area,
@@ -40,9 +39,9 @@ class UserRoleAdministrationTest extends TestCase
 
         $this->assertTrue($admin->refresh()->isAdmin());
 
-        $this->actingAs($actor)
+        $this->actingAs($admin)
             ->patch(route('collaborators.deactivate', $admin))
-            ->assertSessionHas('status', 'No puedes dar de baja al último administrador activo.');
+            ->assertSessionHas('status', 'No puedes dar de baja tu propio usuario.');
 
         $this->assertTrue($admin->refresh()->is_active);
     }

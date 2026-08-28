@@ -4,7 +4,7 @@
             <div>
                 <p class="page-kicker">Operación diaria</p>
                 <h1 class="page-title mt-2">Proyectos</h1>
-                <p class="mt-2 max-w-2xl text-sm text-slate-600">Aquí empieza el módulo tipo Monday, pero más ligero: responsables claros, siguiente paso visible y tareas conectadas al proyecto.</p>
+                <p class="mt-2 max-w-2xl text-sm text-slate-600">Aquí empieza el módulo tipo Monday, pero más ligero: participantes claros, siguiente paso visible y tareas conectadas al proyecto.</p>
             </div>
 
             <button
@@ -125,7 +125,7 @@
                         <th>Etapa</th>
                         <th>Estatus</th>
                         <th>Prioridad</th>
-                        <th>Responsable</th>
+                        <th>Participantes</th>
                         <th>Entrega</th>
                         <th></th>
                     </tr>
@@ -147,7 +147,7 @@
                             <td>{{ \App\Support\OperationalLabels::get($project->current_stage) }}</td>
                             <td><x-status-badge :value="$project->status" /></td>
                             <td>{{ \App\Support\OperationalLabels::get($project->priority) }}</td>
-                            <td>{{ $project->owner?->name ?: 'Sin asignar' }}</td>
+                            <td>{{ $project->workloads->pluck('user.name')->filter()->unique()->join(', ') ?: 'Sin asignar' }}</td>
                             <td>{{ $project->due_at?->translatedFormat('d M Y') ?: 'Sin fecha' }}</td>
                             <td>
                                 <a href="{{ route('projects.show', $project) }}" class="button-secondary">Ver detalle</a>
@@ -180,7 +180,7 @@
         <div class="modal-header flex items-start justify-between gap-4">
             <div>
                 <h2 class="text-lg font-semibold text-slate-950">Nuevo proyecto</h2>
-                <p class="mt-1 text-sm text-slate-500">Conecta un cliente, define responsables y pon una fecha de entrega para que el equipo arranque con orden.</p>
+                <p class="mt-1 text-sm text-slate-500">Conecta un cliente, define participantes y pon una fecha de entrega para que el equipo arranque con orden.</p>
             </div>
             <button type="button" x-on:click="show = false" class="mt-0.5 shrink-0 text-slate-400 hover:text-slate-700">
                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -216,20 +216,6 @@
                         'project' => null,
                         'fieldPrefix' => 'project-',
                     ])
-
-                    <div>
-                        <label class="field-label" for="project-owner">Responsable</label>
-                        <select id="project-owner" name="owner_id" class="field">
-                            <option value="">Asignarme a mí</option>
-                            @foreach ($owners->groupBy('area') as $area => $areaOwners)
-                                <optgroup label="{{ $area ? \App\Support\OperationalLabels::get($area) : 'Sin área' }}">
-                                    @foreach ($areaOwners as $owner)
-                                        <option value="{{ $owner->id }}" @selected(old('owner_id') == $owner->id)>{{ $owner->name }}</option>
-                                    @endforeach
-                                </optgroup>
-                            @endforeach
-                        </select>
-                    </div>
 
                     <div>
                         <label class="field-label" for="project-priority">Prioridad</label>

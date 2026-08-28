@@ -115,7 +115,7 @@
                     <div class="mt-2 text-2xl font-semibold text-slate-950">{{ \App\Models\Task::formatEstimatedMinutes($dailySummary['estimated_minutes']) }}</div>
                 </div>
                 <div class="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
-                    <div class="metric-label">Bloqueadas</div>
+                    <div class="metric-label">Por destrabar</div>
                     <div class="mt-2 text-2xl font-semibold text-slate-950">{{ $dailySummary['blocked'] }}</div>
                 </div>
                 <div class="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
@@ -146,7 +146,7 @@
                                     @endif
                                 </div>
 
-                                @if ($assignee)
+                                @if ($assignee && $canManageCapacity)
                                     <form method="POST" action="{{ route('users.capacity.update', $assignee) }}" class="mt-3 flex flex-wrap items-center gap-2">
                                         @csrf
                                         @method('PATCH')
@@ -179,7 +179,7 @@
                                     </div>
                                 </div>
                                 <div class="rounded-xl bg-stone-50 px-3 py-2">
-                                    <div class="text-xs uppercase tracking-[0.16em] text-slate-400">Bloqueadas</div>
+                                    <div class="text-xs uppercase tracking-[0.16em] text-slate-400">Por destrabar</div>
                                     <div class="mt-1 font-semibold text-slate-900">{{ $row['blocked_count'] }}</div>
                                 </div>
                                 <div class="rounded-xl bg-stone-50 px-3 py-2">
@@ -252,6 +252,9 @@
                                                         @csrf
                                                         @method('PATCH')
                                                         <input type="hidden" name="planned_for" value="{{ $selectedDate->addDay()->format('Y-m-d') }}">
+                                                        @if ($activity['user_id'])
+                                                            <input type="hidden" name="user_id" value="{{ $activity['user_id'] }}">
+                                                        @endif
                                                         <button class="button-secondary px-3 py-1.5 text-xs">Pasar a mañana</button>
                                                     </form>
                                                 @elseif ($project)

@@ -37,6 +37,27 @@ class AuthenticationTest extends TestCase
         $this->assertAuthenticated();
     }
 
+    public function test_login_normalizes_the_email_and_ignores_a_stale_intended_home_url(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'person@bespokeadvertising.com.mx',
+        ]);
+
+        session(['url.intended' => '/']);
+
+        $component = Volt::test('pages.auth.login')
+            ->set('form.email', '  PERSON@BESPOKEADVERTISING.COM.MX  ')
+            ->set('form.password', 'password');
+
+        $component->call('login');
+
+        $component
+            ->assertHasNoErrors()
+            ->assertRedirect(route('dashboard', absolute: false));
+
+        $this->assertAuthenticatedAs($user);
+    }
+
     public function test_users_can_not_authenticate_with_invalid_password(): void
     {
         $user = User::factory()->create();

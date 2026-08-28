@@ -13,24 +13,38 @@ class MyTasksController extends Controller
         $today = today();
 
         $tasks = Task::query()
-            ->where('assigned_to', $userId)
+            ->where(fn ($query) => $query
+                ->where('assigned_to', $userId)
+                ->orWhereHas('assignments', fn ($assignment) => $assignment->where('user_id', $userId)))
             ->with([
                 'project.client',
                 'project.brand',
+                'assignments' => fn ($query) => $query->where('user_id', $userId),
                 'subtasks' => fn ($q) => $q->orderBy('sort_order')->orderBy('id'),
             ])
             ->withCount('subtasks')
             ->withCount([
                 'subtasks as completed_subtasks_count' => fn ($q) => $q->where('is_done', true),
             ])
-            ->orderByRaw("CASE status WHEN 'blocked' THEN 0 WHEN 'in_progress' THEN 1 WHEN 'todo' THEN 2 ELSE 3 END")
+            ->orderByRaw("CASE WHEN status = 'todo' AND blocked_reason IS NOT NULL THEN 0 WHEN status = 'in_progress' THEN 1 WHEN status = 'todo' THEN 2 ELSE 3 END")
             ->orderByRaw('personal_priority is null')
             ->orderBy('personal_priority')
             ->orderByRaw('planned_for is null')
             ->orderBy('planned_for')
             ->orderBy('due_at')
             ->orderBy('id')
-            ->get();
+            ->get()
+            ->each(function (Task $task): void {
+                $assignment = $task->assignments->first();
+
+                if (! $assignment) {
+                    return;
+                }
+
+                $task->setAttribute('planned_for', $assignment->work_date);
+                $task->setAttribute('estimated_minutes', $assignment->estimated_minutes);
+                $task->setAttribute('personal_priority', $assignment->personal_priority);
+            });
 
         $openTasks = $tasks->whereNotIn('status', Task::inactiveStatuses());
 

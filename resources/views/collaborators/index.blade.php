@@ -7,9 +7,11 @@
                 <p class="mt-2 max-w-2xl text-sm text-slate-600">Administra altas, bajas, datos de contacto y capacidad diaria del equipo sin perder el historial operativo.</p>
             </div>
 
-            <button type="button" data-open-modal="create-collaborator" class="button-primary shrink-0">
-                + Nuevo colaborador
-            </button>
+            @if ($canManageCollaborators)
+                <button type="button" data-open-modal="create-collaborator" class="button-primary shrink-0">
+                    + Nuevo colaborador
+                </button>
+            @endif
         </div>
     </x-slot>
 
@@ -120,7 +122,8 @@
                                 <div class="mt-1 text-xs text-slate-500">Inicio: {{ $collaborator->lastLoginLabel() }}</div>
                             </td>
                             <td>
-                                <div class="flex flex-wrap items-center justify-end gap-2">
+                                @if ($canManageCollaborators)
+                                    <div class="flex flex-wrap items-center justify-end gap-2">
                                     <button
                                         type="button"
                                         data-open-modal="edit-collaborator-{{ $collaborator->id }}"
@@ -146,7 +149,8 @@
                                             <button type="submit" class="rounded-xl border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100">Reactivar</button>
                                         </form>
                                     @endif
-                                </div>
+                                    </div>
+                                @endif
                             </td>
                         </tr>
                     @empty
@@ -171,6 +175,7 @@
         @endif
     </div>
 
+    @if ($canManageCollaborators)
     @foreach ($collaborators as $collaborator)
         <x-modal name="edit-collaborator-{{ $collaborator->id }}" :show="$errors->any() && old('_form') === 'edit-collaborator-'.$collaborator->id">
             <div class="modal-header flex items-start justify-between gap-4">
@@ -348,4 +353,5 @@
             </form>
         </div>
     </x-modal>
+    @endif
 </x-app-layout>

@@ -159,6 +159,6 @@ class Project extends Model
 
     public static function stageOptions(): array
     {
-        return ['brief', 'medical_review', 'design', 'client_review', 'ready_to_submit'];
+        return ['initial', 'accounts', 'medical', 'design', 'copy', 'social_media', 'client'];
     }
 }

@@ -446,6 +446,7 @@ const initializeTaskBoards = () => {
     document.querySelectorAll('[data-task-board]').forEach((board) => {
         let draggedCard = null;
         let sourceColumn = null;
+        let boardSnapshot = null;
 
         const columns = Array.from(board.querySelectorAll('[data-board-column]'));
 
@@ -483,11 +484,11 @@ const initializeTaskBoards = () => {
                 ordered_ids: getCards(targetColumn).map((taskCard) => Number(taskCard.dataset.taskId)),
             };
 
-            if (targetStatus === 'blocked' && sourceStatus !== 'blocked') {
-                const reason = window.prompt('¿Qué impide avanzar y quién debe destrabarlo?');
+            if (sourceStatus === 'in_progress' && targetStatus === 'todo') {
+                const reason = window.prompt('¿Qué impide avanzar? El motivo quedará visible en la tarjeta.');
 
                 if (!reason?.trim()) {
-                    throw new Error('El motivo de bloqueo es obligatorio.');
+                    throw new Error('El motivo es obligatorio para regresar la tarea a Por hacer.');
                 }
 
                 payload.blocked_reason = reason.trim();
@@ -525,6 +526,20 @@ const initializeTaskBoards = () => {
             }
         };
 
+        const restoreBoard = () => {
+            if (!boardSnapshot) return;
+
+            columns.forEach((column) => {
+                const list = getList(column);
+                const ids = boardSnapshot.get(column.dataset.status) || [];
+                ids.forEach((id) => {
+                    const card = board.querySelector(`[data-task-card][data-task-id="${id}"]`);
+                    if (card) list.appendChild(card);
+                });
+            });
+            updateColumnState();
+        };
+
         columns.forEach((column) => {
             const list = getList(column);
 
@@ -559,13 +574,14 @@ const initializeTaskBoards = () => {
                 try {
                     await syncBoard(draggedCard, targetColumn);
                 } catch (error) {
+                    restoreBoard();
                     window.alert(error.message);
-                    window.location.reload();
                 } finally {
                     columns.forEach((item) => item.classList.remove('is-drop-target'));
                     draggedCard.classList.remove('is-dragging');
                     draggedCard = null;
                     sourceColumn = null;
+                    boardSnapshot = null;
                     updateColumnState();
                 }
             });
@@ -583,6 +599,10 @@ const initializeTaskBoards = () => {
             card.addEventListener('dragstart', () => {
                 draggedCard = card;
                 sourceColumn = card.closest('[data-board-column]');
+                boardSnapshot = new Map(columns.map((column) => [
+                    column.dataset.status,
+                    getCards(column).map((taskCard) => Number(taskCard.dataset.taskId)),
+                ]));
                 card.classList.add('is-dragging');
             });
 

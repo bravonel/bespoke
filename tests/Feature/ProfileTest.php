@@ -56,7 +56,7 @@ class ProfileTest extends TestCase
         $this->actingAs($user);
 
         Volt::test('profile.update-profile-information-form')
-            ->assertSet('area', 'Redacción')
+            ->assertSet('area', 'Copy')
             ->assertSet('puesto', 'Gestor de proyectos');
     }
 

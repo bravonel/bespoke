@@ -71,9 +71,9 @@
 
     <div>
         <label class="field-label" for="{{ $brandFieldId }}">Marca</label>
+        <input type="hidden" name="brand_id" :value="brandId">
         <select
             id="{{ $brandFieldId }}"
-            name="brand_id"
             class="field"
             x-model="brandId"
             :disabled="!clientId || filteredBrands.length === 0"
