@@ -3,9 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Models\ActivityAlert;
-use App\Models\ActivityEvent;
+use App\Services\Audit\ActivityChainVerifier;
 use Illuminate\Console\Command;
-use Illuminate\Support\Arr;
 
 class VerifyActivityChain extends Command
 {
@@ -13,45 +12,52 @@ class VerifyActivityChain extends Command
 
     protected $description = 'Verifica la cadena criptográfica del registro de actividad';
 
-    public function handle(): int
+    public function handle(ActivityChainVerifier $verifier): int
     {
-        $previousHash = null;
+        if (blank(config('app.key'))) {
+            $this->error('APP_KEY no está configurada; no es posible verificar firmas.');
 
-        foreach (ActivityEvent::query()->orderBy('id')->cursor() as $event) {
-            $payload = Arr::sortRecursive([
-                'actor_id' => $event->actor_id,
-                'user_session_id' => $event->user_session_id,
-                'event_type' => $event->event_type,
-                'channel' => $event->channel,
-                'status' => $event->status,
-                'auditable_type' => $event->auditable_type,
-                'auditable_id' => $event->auditable_id,
-                'project_id' => $event->project_id,
-                'client_id' => $event->client_id,
-                'metadata' => $event->metadata ?? [],
-                'created_at' => $event->created_at?->format('Y-m-d H:i:s'),
-                'previous_hash' => $event->previous_hash,
-            ]);
-            $expected = hash_hmac('sha256', json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), (string) config('app.key'));
+            return self::FAILURE;
+        }
 
-            if ($event->previous_hash !== $previousHash || ! hash_equals((string) $event->event_hash, $expected)) {
-                ActivityAlert::query()->firstOrCreate(
-                    ['fingerprint' => 'activity-chain-'.$event->id],
-                    [
-                        'alert_type' => 'integrity_failure',
-                        'severity' => 'critical',
-                        'title' => 'Fallo de integridad en auditoría',
-                        'description' => "El evento {$event->id} no coincide con la cadena criptográfica.",
-                        'metadata' => ['activity_event_id' => $event->id],
-                        'detected_at' => now(),
+        $failures = $verifier->failures();
+        $activeFingerprints = [];
+
+        foreach ($failures as $failure) {
+            $fingerprint = "activity-chain:{$failure['kind']}:{$failure['event_id']}";
+            $activeFingerprints[] = $fingerprint;
+            $kindLabel = $failure['kind'] === 'broken_link' ? 'enlace roto' : 'contenido alterado';
+
+            ActivityAlert::query()->updateOrCreate(
+                ['fingerprint' => $fingerprint],
+                [
+                    'alert_type' => 'integrity_failure',
+                    'severity' => 'critical',
+                    'title' => 'Fallo de integridad en auditoría',
+                    'description' => "El evento {$failure['event_id']} presenta {$kindLabel}.",
+                    'metadata' => [
+                        'activity_event_id' => $failure['event_id'],
+                        'failure_kind' => $failure['kind'],
                     ],
-                );
-                $this->error("Cadena inválida en evento {$event->id}.");
+                    'detected_at' => now(),
+                    'resolved_at' => null,
+                ],
+            );
 
-                return self::FAILURE;
-            }
+            $this->error("Evento {$failure['event_id']}: {$kindLabel}.");
+        }
 
-            $previousHash = $event->event_hash;
+        ActivityAlert::query()
+            ->where('alert_type', 'integrity_failure')
+            ->whereNull('resolved_at')
+            ->get()
+            ->reject(fn (ActivityAlert $alert) => in_array($alert->fingerprint, $activeFingerprints, true))
+            ->each->update(['resolved_at' => now()]);
+
+        if ($failures !== []) {
+            $this->error('Cadena inválida: '.count($failures).' fallo(s) detectado(s).');
+
+            return self::FAILURE;
         }
 
         $this->info('Cadena de actividad válida.');

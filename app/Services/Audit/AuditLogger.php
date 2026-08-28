@@ -4,6 +4,7 @@ namespace App\Services\Audit;
 
 use App\Models\ActivityEvent;
 use App\Models\AiAssistantMessage;
+use App\Models\Brand;
 use App\Models\Client;
 use App\Models\Project;
 use App\Models\ProjectMember;
@@ -132,9 +133,12 @@ class AuditLogger
         $sessionId = $userSessionId ?? (request()?->hasSession()
             ? request()->session()->get('activity_session_id')
             : null);
-        $sanitized = $this->sanitize($metadata);
         $projectId = $auditable ? $this->projectId($auditable) : null;
         $clientId = $auditable ? $this->clientId($auditable) : null;
+        $sanitized = $this->sanitize([
+            ...$metadata,
+            'context' => $this->contextSnapshot($auditable, $actor, $actorId, $projectId, $clientId),
+        ]);
 
         return DB::transaction(function () use (
             $eventType,
@@ -247,5 +251,50 @@ class AuditLogger
         }
 
         return hash_hmac('sha256', $ip, (string) config('app.key', 'bespoke-os'));
+    }
+
+    private function contextSnapshot(
+        ?Model $auditable,
+        ?User $actor,
+        ?int $actorId,
+        ?int $projectId,
+        ?int $clientId,
+    ): array {
+        $project = match (true) {
+            $auditable instanceof Project => $auditable,
+            $projectId !== null => Project::query()->find($projectId),
+            default => null,
+        };
+        $client = match (true) {
+            $auditable instanceof Client => $auditable,
+            $project instanceof Project => $project->client,
+            $clientId !== null => Client::query()->find($clientId),
+            default => null,
+        };
+
+        return array_filter([
+            'actor_label' => $actor?->name ?? ($actorId ? User::query()->whereKey($actorId)->value('name') : null),
+            'entity_type' => $auditable ? class_basename($auditable) : null,
+            'entity_label' => $this->entityLabel($auditable),
+            'project_code' => $project?->operationalCode(),
+            'project_name' => $project?->name,
+            'client_name' => $client?->name,
+        ], fn (mixed $value) => $value !== null && $value !== '');
+    }
+
+    private function entityLabel(?Model $model): ?string
+    {
+        if (! $model) {
+            return null;
+        }
+
+        if ($model instanceof Brand) {
+            return $model->name;
+        }
+
+        return $model->getAttribute('title')
+            ?? $model->getAttribute('name')
+            ?? $model->getAttribute('odt_code')
+            ?? $model->getAttribute('code');
     }
 }

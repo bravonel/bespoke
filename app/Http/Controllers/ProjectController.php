@@ -10,8 +10,8 @@ use App\Models\Task;
 use App\Models\User;
 use App\Services\Access\OperationalAccess;
 use App\Services\Activity\ActivityFeed;
-use App\Services\Tasks\TaskWorkflow;
 use App\Services\Tasks\TaskAssignments;
+use App\Services\Tasks\TaskWorkflow;
 use App\Support\OperationalLabels;
 use App\Support\SimpleXlsxWriter;
 use Illuminate\Contracts\View\View;
@@ -19,8 +19,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -41,8 +41,8 @@ class ProjectController extends Controller
                 ->latest()
                 ->paginate(20)
                 ->withQueryString(),
-            'clients' => Client::query()->orderBy('name')->get(),
-            'brands' => Brand::query()->with('client')->orderBy('name')->get(),
+            'clients' => Client::query()->where('status', '!=', 'archived')->orderBy('name')->get(),
+            'brands' => Brand::query()->where('status', '!=', 'archived')->with('client')->orderBy('name')->get(),
             'owners' => User::query()->active()->orderBy('name')->get(),
             'statuses' => Project::statusOptions(),
             'priorities' => Project::priorityOptions(),
@@ -96,8 +96,8 @@ class ProjectController extends Controller
         abort_unless($access->canCreateProjects($request->user()), 403);
 
         return view('projects.create', [
-            'clients' => Client::query()->orderBy('name')->get(),
-            'brands' => Brand::query()->with('client')->orderBy('name')->get(),
+            'clients' => Client::query()->where('status', '!=', 'archived')->orderBy('name')->get(),
+            'brands' => Brand::query()->where('status', '!=', 'archived')->with('client')->orderBy('name')->get(),
             'owners' => User::query()->active()->orderBy('name')->get(),
             'statuses' => Project::statusOptions(),
             'priorities' => Project::priorityOptions(),
@@ -115,11 +115,13 @@ class ProjectController extends Controller
         $this->normalizeProjectInput($request);
 
         $validated = $request->validate([
-            'client_id' => ['required', 'exists:clients,id'],
+            'client_id' => ['required', Rule::exists('clients', 'id')->where(fn ($query) => $query->where('status', '!=', 'archived'))],
             'brand_id' => [
                 'nullable',
                 Rule::exists('brands', 'id')->where(
-                    fn ($query) => $query->where('client_id', $request->integer('client_id'))
+                    fn ($query) => $query
+                        ->where('client_id', $request->integer('client_id'))
+                        ->where('status', '!=', 'archived')
                 ),
             ],
             'name' => ['required', 'string', 'max:255'],
@@ -168,12 +170,31 @@ class ProjectController extends Controller
         return to_route('projects.show', $project)->with('status', 'Proyecto creado.');
     }
 
-    public function destroy(Request $request, Project $project, OperationalAccess $access): RedirectResponse
+    public function archive(Request $request, Project $project, OperationalAccess $access): RedirectResponse
     {
         abort_unless($access->canManageProject($request->user(), $project), 403);
-        $project->delete();
+        if ($project->status !== 'archived') {
+            $project->update([
+                'status_before_archive' => $project->status,
+                'status' => 'archived',
+            ]);
+        }
 
-        return to_route('projects.index')->with('status', 'Proyecto eliminado.');
+        return to_route('projects.index')->with('status', 'Proyecto archivado. Su historial y tareas se conservaron.');
+    }
+
+    public function restore(Request $request, Project $project, OperationalAccess $access): RedirectResponse
+    {
+        abort_unless($access->canManageProject($request->user(), $project), 403);
+
+        if ($project->status === 'archived') {
+            $project->update([
+                'status' => $project->status_before_archive ?: 'active',
+                'status_before_archive' => null,
+            ]);
+        }
+
+        return to_route('projects.show', $project)->with('status', 'Proyecto restaurado.');
     }
 
     public function update(Request $request, Project $project, OperationalAccess $access): RedirectResponse
@@ -182,11 +203,20 @@ class ProjectController extends Controller
         $this->normalizeProjectInput($request);
 
         $validated = $request->validate([
-            'client_id' => ['required', 'exists:clients,id'],
+            'client_id' => [
+                'required',
+                Rule::exists('clients', 'id')->where(fn ($query) => $query
+                    ->where('status', '!=', 'archived')
+                    ->orWhere('id', $project->client_id)),
+            ],
             'brand_id' => [
                 'nullable',
                 Rule::exists('brands', 'id')->where(
-                    fn ($query) => $query->where('client_id', $request->integer('client_id'))
+                    fn ($query) => $query
+                        ->where('client_id', $request->integer('client_id'))
+                        ->where(fn ($brandQuery) => $brandQuery
+                            ->where('status', '!=', 'archived')
+                            ->orWhere('id', $project->brand_id))
                 ),
             ],
             'name' => ['required', 'string', 'max:255'],
@@ -283,8 +313,17 @@ class ProjectController extends Controller
         return view('projects.show', [
             'project' => $project,
             'users' => $this->usersAvailableForProject($project),
-            'clients' => Client::query()->orderBy('name')->get(),
-            'brands' => Brand::query()->with('client')->orderBy('name')->get(),
+            'clients' => Client::query()
+                ->where('status', '!=', 'archived')
+                ->orWhere('id', $project->client_id)
+                ->orderBy('name')
+                ->get(),
+            'brands' => Brand::query()
+                ->where('status', '!=', 'archived')
+                ->orWhere('id', $project->brand_id)
+                ->with('client')
+                ->orderBy('name')
+                ->get(),
             'taskGroups' => $taskGroups,
             'taskStatuses' => Task::statusOptions(),
             'taskStatusMeta' => Task::statusMeta(),
@@ -499,7 +538,11 @@ class ProjectController extends Controller
         $query
             ->when($filters['client_ids'], fn (Builder $query, array $ids) => $query->whereIn('client_id', $ids))
             ->when($filters['brand_ids'], fn (Builder $query, array $ids) => $query->whereIn('brand_id', $ids))
-            ->when($filters['status'], fn (Builder $query, string $status) => $query->where('status', $status))
+            ->when(
+                $filters['status'],
+                fn (Builder $query, string $status) => $query->where('status', $status),
+                fn (Builder $query) => $query->where('status', '!=', 'archived'),
+            )
             ->when($filters['stage'], fn (Builder $query, string $stage) => $query->where('current_stage', $stage))
             ->when($filters['q'], function (Builder $query, string $search) {
                 $query->where(fn (Builder $subquery) => $subquery

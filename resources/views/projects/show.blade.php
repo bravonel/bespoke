@@ -497,13 +497,23 @@
                     ])
 
                     <div class="lg:col-span-2 flex items-center justify-between gap-3">
-                        <button
-                            type="submit"
-                            form="delete-project-form"
-                            class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
-                        >
-                            Eliminar proyecto
-                        </button>
+                        @if ($project->status === 'archived')
+                            <button
+                                type="submit"
+                                form="restore-project-form"
+                                class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
+                            >
+                                Restaurar proyecto
+                            </button>
+                        @else
+                            <button
+                                type="submit"
+                                form="archive-project-form"
+                                class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-800 transition hover:bg-amber-100"
+                            >
+                                Archivar proyecto
+                            </button>
+                        @endif
 
                         <div class="flex gap-3">
                             <button type="button" x-on:click="$dispatch('close')" data-close-modal="edit-project" class="button-secondary">Cancelar</button>
@@ -512,14 +522,13 @@
                     </div>
                 </form>
 
-                <form
-                    id="delete-project-form"
-                    method="POST"
-                    action="{{ route('projects.destroy', $project) }}"
-                    onsubmit="return confirm('¿Eliminar el proyecto {{ addslashes($project->name) }} y todas sus tareas? Esta acción no se puede deshacer.')"
-                >
+                <form id="archive-project-form" method="POST" action="{{ route('projects.archive', $project) }}" onsubmit="return confirm('¿Archivar el proyecto {{ addslashes($project->name) }}? Sus tareas y su historial se conservarán.')">
                     @csrf
-                    @method('DELETE')
+                    @method('PATCH')
+                </form>
+                <form id="restore-project-form" method="POST" action="{{ route('projects.restore', $project) }}">
+                    @csrf
+                    @method('PATCH')
                 </form>
             </div>
         </x-modal>

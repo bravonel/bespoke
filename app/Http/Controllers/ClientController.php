@@ -39,6 +39,8 @@ class ClientController extends Controller
 
         if ($filters['status'] !== '') {
             $query->where('status', $filters['status']);
+        } else {
+            $query->where('status', '!=', 'archived');
         }
 
         return view('clients.index', [
@@ -83,10 +85,27 @@ class ClientController extends Controller
         return to_route('clients.index')->with('status', 'Cliente actualizado.');
     }
 
-    public function destroy(Client $client): RedirectResponse
+    public function deactivate(Client $client): RedirectResponse
     {
-        $client->delete();
+        if ($client->status !== 'archived') {
+            $client->update([
+                'status_before_archive' => $client->status,
+                'status' => 'archived',
+            ]);
+        }
 
-        return to_route('clients.index')->with('status', 'Cliente eliminado.');
+        return to_route('clients.index')->with('status', 'Cliente desactivado. Sus proyectos e historial se conservaron.');
+    }
+
+    public function activate(Client $client): RedirectResponse
+    {
+        if ($client->status === 'archived') {
+            $client->update([
+                'status' => $client->status_before_archive ?: 'active',
+                'status_before_archive' => null,
+            ]);
+        }
+
+        return to_route('clients.index', ['status' => 'archived'])->with('status', 'Cliente reactivado.');
     }
 }

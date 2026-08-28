@@ -15,6 +15,9 @@
 
     <div class="shell space-y-8">
         <section class="panel p-6">
+            @if ($errors->has('alert'))
+                <div class="mb-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">{{ $errors->first('alert') }}</div>
+            @endif
             <form method="GET" action="{{ route('activity.index') }}" class="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
                 <div>
                     <label class="field-label" for="activity-from">Desde</label>
@@ -187,9 +190,7 @@
                         @forelse ($events as $event)
                             @php
                                 $changes = $event->metadata['changes'] ?? [];
-                                $entityLabel = $event->auditable?->title
-                                    ?? $event->auditable?->name
-                                    ?? $event->auditable?->code;
+                                $entityLabel = $event->entityLabel();
                             @endphp
                             <tr class="align-top">
                                 <td class="whitespace-nowrap px-5 py-4 text-slate-600">
@@ -197,7 +198,7 @@
                                     <div class="text-xs text-slate-400">{{ $event->created_at?->format('H:i:s') }}</div>
                                 </td>
                                 <td class="px-5 py-4">
-                                    <div class="font-semibold text-slate-900">{{ $event->actor?->name ?: 'Sistema' }}</div>
+                                    <div class="font-semibold text-slate-900">{{ $event->actorLabel() }}</div>
                                     @if ($event->actor?->area)<div class="text-xs text-slate-400">{{ $event->actor->area }}</div>@endif
                                 </td>
                                 <td class="px-5 py-4">
@@ -205,7 +206,7 @@
                                     <div class="mt-1 font-mono text-[11px] text-slate-400">{{ $event->event_type }}</div>
                                 </td>
                                 <td class="px-5 py-4 text-slate-600">
-                                    <div>{{ $event->project?->name ?: $event->client?->name ?: 'General' }}</div>
+                                    <div>{{ $event->contextLabel() }}</div>
                                     @if ($event->auditable_type)
                                         <div class="text-xs text-slate-400">{{ class_basename($event->auditable_type) }} #{{ $event->auditable_id }}{{ $entityLabel ? ' · '.$entityLabel : '' }}</div>
                                     @endif

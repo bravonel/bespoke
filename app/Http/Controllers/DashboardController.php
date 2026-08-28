@@ -23,12 +23,16 @@ class DashboardController extends Controller
         $userFilter = $request->integer('user_id') ?: null;
 
         $summary = [
-            'clients' => Client::count(),
-            'brands' => Brand::count(),
-            'projects' => (clone $access->projects($user))->count(),
+            'clients' => Client::query()->where('status', '!=', 'archived')->count(),
+            'brands' => Brand::query()->where('status', '!=', 'archived')->count(),
+            'projects' => (clone $access->projects($user))->where('status', '!=', 'archived')->count(),
             'active_projects' => (clone $access->projects($user))->whereIn('status', ['active', 'in_review'])->count(),
-            'open_tasks' => (clone $access->tasks($user))->whereIn('status', ['todo', 'in_progress'])->count(),
+            'open_tasks' => (clone $access->tasks($user))
+                ->whereHas('project', fn ($query) => $query->where('status', '!=', 'archived'))
+                ->whereIn('status', ['todo', 'in_progress'])
+                ->count(),
             'my_tasks' => Task::query()
+                ->whereHas('project', fn ($query) => $query->where('status', '!=', 'archived'))
                 ->where(fn ($query) => $query
                     ->where('assigned_to', auth()->id())
                     ->orWhereHas('assignments', fn ($assignment) => $assignment->where('user_id', auth()->id())))
@@ -38,6 +42,7 @@ class DashboardController extends Controller
 
         $projectsDueSoon = $access->projects($user)
             ->with(['client', 'brand', 'owner'])
+            ->where('status', '!=', 'archived')
             ->whereNotIn('status', Task::closedStatuses())
             ->orderByRaw('due_at is null')
             ->orderBy('due_at')
@@ -46,12 +51,14 @@ class DashboardController extends Controller
 
         $recentTasks = $access->tasks($user)
             ->with(['project', 'assignee', 'assignments.user'])
+            ->whereHas('project', fn ($query) => $query->where('status', '!=', 'archived'))
             ->latest()
             ->limit(8)
             ->get();
 
         $dailyTasksQuery = $access->tasks($user)
             ->with(['assignee', 'assignments.user', 'project.client', 'project.brand'])
+            ->whereHas('project', fn ($query) => $query->where('status', '!=', 'archived'))
             ->where(function ($query) use ($selectedDate): void {
                 $query->whereDate('planned_for', $selectedDate->toDateString())
                     ->orWhereHas('assignments', fn ($assignment) => $assignment
@@ -79,7 +86,7 @@ class DashboardController extends Controller
 
         $dailyWorkloadsQuery = ProjectWorkload::query()
             ->with(['user', 'project.client', 'project.brand'])
-            ->whereIn('project_id', $access->projects($user)->select('projects.id'))
+            ->whereIn('project_id', $access->projects($user)->where('status', '!=', 'archived')->select('projects.id'))
             ->whereNull('task_id')
             ->whereDate('work_date', $selectedDate->toDateString())
             ->orderBy('role')

@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\UserSession;
 use App\Services\Access\OperationalAccess;
 use App\Services\Activity\ActivityLabels;
+use App\Services\Audit\ActivityChainVerifier;
 use App\Services\Audit\AuditLogger;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -72,9 +73,24 @@ class ActivityController extends Controller
         ]);
     }
 
-    public function resolveAlert(Request $request, ActivityAlert $alert, AuditLogger $audit)
-    {
+    public function resolveAlert(
+        Request $request,
+        ActivityAlert $alert,
+        AuditLogger $audit,
+        ActivityChainVerifier $verifier,
+    ) {
         abort_unless($request->user()->canViewTeamActivity(), 403);
+
+        if ($alert->alert_type === 'integrity_failure') {
+            $eventId = (int) data_get($alert->metadata, 'activity_event_id');
+            $event = ActivityEvent::query()->find($eventId);
+
+            if ($event && $verifier->failureKindsForEvent($event) !== []) {
+                return back()->withErrors([
+                    'alert' => "El evento {$eventId} todavía falla la verificación y no puede marcarse como resuelto.",
+                ]);
+            }
+        }
 
         $alert->update(['resolved_at' => now()]);
         $audit->record('activity.alert_resolved', $alert, $request->user(), [
@@ -102,10 +118,10 @@ class ActivityController extends Controller
             foreach ($events as $event) {
                 fputcsv($handle, [
                     $event->created_at?->toIso8601String(),
-                    $event->actor?->name ?: 'Sistema',
+                    $event->actorLabel(),
                     ActivityLabels::get($event->event_type),
                     $event->channel,
-                    $event->project?->name,
+                    $event->contextLabel(),
                     $event->auditable_type ? class_basename($event->auditable_type) : null,
                     $event->auditable_id,
                     json_encode($event->metadata['changes'] ?? [], JSON_UNESCAPED_UNICODE),

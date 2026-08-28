@@ -69,4 +69,28 @@ class ActivityEvent extends Model
     {
         return $this->belongsTo(Client::class);
     }
+
+    public function actorLabel(): string
+    {
+        return $this->actor?->name
+            ?? data_get($this->metadata, 'context.actor_label')
+            ?? 'Sistema';
+    }
+
+    public function contextLabel(): string
+    {
+        return $this->project?->name
+            ?? $this->client?->name
+            ?? data_get($this->metadata, 'context.project_name')
+            ?? data_get($this->metadata, 'context.client_name')
+            ?? 'General';
+    }
+
+    public function entityLabel(): ?string
+    {
+        return $this->auditable?->title
+            ?? $this->auditable?->name
+            ?? $this->auditable?->code
+            ?? data_get($this->metadata, 'context.entity_label');
+    }
 }

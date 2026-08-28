@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use LogicException;
 
 class Project extends Model
 {
@@ -26,6 +27,7 @@ class Project extends Model
         'material_size',
         'priority',
         'status',
+        'status_before_archive',
         'current_stage',
         'description',
         'legal_requirements',
@@ -42,6 +44,11 @@ class Project extends Model
             'due_at' => 'date',
             'completed_at' => 'datetime',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::deleting(fn () => throw new LogicException('Los proyectos deben archivarse; el borrado físico está deshabilitado.'));
     }
 
     public function client(): BelongsTo

@@ -120,6 +120,7 @@ class AiContextBuilder
     {
         return $this->access->tasks($user)
             ->with(['project.client', 'project.brand', 'assignee', 'assignments.user'])
+            ->whereHas('project', fn ($query) => $query->where('status', '!=', 'archived'))
             ->when($projectIds->isNotEmpty(), fn ($query) => $query->whereIn('project_id', $projectIds))
             ->when($projectIds->isEmpty(), fn ($query) => $query->whereIn('status', self::OPEN_TASK_STATUSES))
             ->when($terms->isNotEmpty(), function ($query) use ($terms) {
@@ -143,6 +144,7 @@ class AiContextBuilder
         $date = today()->toDateString();
         $tasks = $this->access->tasks($user)
             ->with(['assignee', 'assignments.user', 'project.client', 'project.brand'])
+            ->whereHas('project', fn ($query) => $query->where('status', '!=', 'archived'))
             ->where(fn ($query) => $query
                 ->whereDate('planned_for', $date)
                 ->orWhereHas('assignments', fn ($assignment) => $assignment->whereDate('work_date', $date)))
@@ -180,7 +182,7 @@ class AiContextBuilder
 
         $workloads = ProjectWorkload::query()
             ->with(['user', 'project.client', 'project.brand'])
-            ->whereIn('project_id', $this->access->projects($user)->select('projects.id'))
+            ->whereIn('project_id', $this->access->projects($user)->where('status', '!=', 'archived')->select('projects.id'))
             ->whereNull('task_id')
             ->whereDate('work_date', $date)
             ->get()
@@ -273,6 +275,7 @@ class AiContextBuilder
     private function projectQuery(User $user)
     {
         return $this->access->projects($user)
+            ->where('status', '!=', 'archived')
             ->with(['client', 'brand'])
             ->withCount([
                 'tasks',

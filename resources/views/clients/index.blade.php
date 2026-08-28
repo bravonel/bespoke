@@ -96,14 +96,10 @@
                                         class="button-secondary py-1.5 text-xs"
                                     >Editar</button>
 
-                                    <form
-                                        method="POST"
-                                        action="{{ route('clients.destroy', $client) }}"
-                                        onsubmit="return confirm('¿Eliminar cliente {{ addslashes($client->name) }}?')"
-                                    >
+                                    <form method="POST" action="{{ $client->status === 'archived' ? route('clients.activate', $client) : route('clients.deactivate', $client) }}" onsubmit="return confirm('{{ $client->status === 'archived' ? '¿Reactivar' : '¿Desactivar' }} cliente {{ addslashes($client->name) }}? Sus proyectos y su historial se conservarán.')">
                                         @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="rounded-xl border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100">Eliminar</button>
+                                        @method('PATCH')
+                                        <button type="submit" class="rounded-xl border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-800 transition hover:bg-amber-100">{{ $client->status === 'archived' ? 'Reactivar' : 'Desactivar' }}</button>
                                     </form>
                                 </div>
                             </td>

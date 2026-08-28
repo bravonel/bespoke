@@ -455,14 +455,14 @@ class ProjectBoardTest extends TestCase
             ->assertSee('data-close-modal="edit-project"', false);
     }
 
-    public function test_project_can_be_deleted_from_its_independent_form(): void
+    public function test_project_is_archived_without_deleting_its_tasks_and_can_be_restored(): void
     {
         $user = User::factory()->create();
         $project = $this->makeProject($user);
 
         Task::create([
             'project_id' => $project->id,
-            'title' => 'Tarea que se eliminará con el proyecto',
+            'title' => 'Tarea que debe conservarse con el proyecto',
             'status' => 'todo',
             'priority' => 'normal',
             'sort_order' => 0,
@@ -472,17 +472,22 @@ class ProjectBoardTest extends TestCase
 
         $page
             ->assertOk()
-            ->assertSee('form="delete-project-form"', false)
-            ->assertSee('id="delete-project-form"', false)
-            ->assertSee('name="_method" value="DELETE"', false);
+            ->assertSee('form="archive-project-form"', false)
+            ->assertSee('id="archive-project-form"', false)
+            ->assertSee('Archivar proyecto');
 
-        $response = $this->actingAs($user)->delete(route('projects.destroy', $project));
+        $response = $this->actingAs($user)->patch(route('projects.archive', $project));
 
         $response
             ->assertRedirect(route('projects.index'))
-            ->assertSessionHas('status', 'Proyecto eliminado.');
-        $this->assertDatabaseMissing('projects', ['id' => $project->id]);
-        $this->assertDatabaseMissing('tasks', ['project_id' => $project->id]);
+            ->assertSessionHas('status', 'Proyecto archivado. Su historial y tareas se conservaron.');
+        $this->assertDatabaseHas('projects', ['id' => $project->id, 'status' => 'archived']);
+        $this->assertDatabaseHas('tasks', ['project_id' => $project->id]);
+
+        $this->actingAs($user)
+            ->patch(route('projects.restore', $project))
+            ->assertRedirect(route('projects.show', $project));
+        $this->assertDatabaseHas('projects', ['id' => $project->id, 'status' => 'active']);
     }
 
     public function test_project_detail_shows_hours_by_collaborator(): void

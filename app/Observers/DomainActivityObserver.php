@@ -90,12 +90,18 @@ class DomainActivityObserver
             $model instanceof Subtask && in_array('is_done', $fields, true) => $model->is_done
                 ? 'subtask.completed'
                 : 'subtask.reopened',
+            $model instanceof Project && in_array('status', $fields, true) && $model->status === 'archived' => 'project.archived',
+            $model instanceof Project && in_array('status', $fields, true) && $model->getOriginal('status') === 'archived' => 'project.restored',
             $model instanceof Project && in_array('status', $fields, true) => 'project.status_changed',
             $model instanceof Project && in_array('current_stage', $fields, true) => 'project.stage_changed',
             $model instanceof ProjectMember && in_array('project_role', $fields, true) => 'project.member_role_changed',
             $model instanceof ProjectMember && in_array('status', $fields, true) => 'project.member_status_changed',
             $model instanceof ProjectWorkload => 'project.workload_changed',
+            $model instanceof Client && in_array('status', $fields, true) && $model->status === 'archived' => 'client.deactivated',
+            $model instanceof Client && in_array('status', $fields, true) && $model->getOriginal('status') === 'archived' => 'client.activated',
             $model instanceof Client && in_array('status', $fields, true) => 'client.status_changed',
+            $model instanceof Brand && in_array('status', $fields, true) && $model->status === 'archived' => 'brand.deactivated',
+            $model instanceof Brand && in_array('status', $fields, true) && $model->getOriginal('status') === 'archived' => 'brand.activated',
             $model instanceof Brand && in_array('status', $fields, true) => 'brand.status_changed',
             default => $this->prefix($model).'.updated',
         };

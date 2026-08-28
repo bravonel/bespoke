@@ -45,6 +45,8 @@ class BrandController extends Controller
 
         if ($filters['status'] !== '') {
             $query->where('status', $filters['status']);
+        } else {
+            $query->where('status', '!=', 'archived');
         }
 
         return view('brands.index', [
@@ -88,10 +90,27 @@ class BrandController extends Controller
         return to_route('brands.index')->with('status', 'Marca actualizada.');
     }
 
-    public function destroy(Brand $brand): RedirectResponse
+    public function deactivate(Brand $brand): RedirectResponse
     {
-        $brand->delete();
+        if ($brand->status !== 'archived') {
+            $brand->update([
+                'status_before_archive' => $brand->status,
+                'status' => 'archived',
+            ]);
+        }
 
-        return to_route('brands.index')->with('status', 'Marca eliminada.');
+        return to_route('brands.index')->with('status', 'Marca desactivada. Sus proyectos e historial se conservaron.');
+    }
+
+    public function activate(Brand $brand): RedirectResponse
+    {
+        if ($brand->status === 'archived') {
+            $brand->update([
+                'status' => $brand->status_before_archive ?: 'active',
+                'status_before_archive' => null,
+            ]);
+        }
+
+        return to_route('brands.index', ['status' => 'archived'])->with('status', 'Marca reactivada.');
     }
 }

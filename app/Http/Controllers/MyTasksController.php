@@ -13,6 +13,7 @@ class MyTasksController extends Controller
         $today = today();
 
         $tasks = Task::query()
+            ->whereHas('project', fn ($query) => $query->where('status', '!=', 'archived'))
             ->where(fn ($query) => $query
                 ->where('assigned_to', $userId)
                 ->orWhereHas('assignments', fn ($assignment) => $assignment->where('user_id', $userId)))

@@ -23,9 +23,9 @@
             @foreach ($events as $event)
                 <tr>
                     <td>{{ $event->created_at?->format('d/m/Y H:i:s') }}</td>
-                    <td>{{ $event->actor?->name ?: 'Sistema' }}</td>
+                    <td>{{ $event->actorLabel() }}</td>
                     <td>{{ $labels::get($event->event_type) }}</td>
-                    <td>{{ $event->project?->name ?: $event->client?->name }}</td>
+                    <td>{{ $event->contextLabel() }}</td>
                     <td>{{ $event->channel }}</td>
                     <td>{{ collect($event->metadata['fields_changed'] ?? [])->join(', ') }}</td>
                 </tr>

@@ -13,7 +13,7 @@
                 <span class="mt-2 h-2 w-2 shrink-0 rounded-full bg-indigo-500"></span>
                 <div class="min-w-0">
                     <p class="text-sm text-slate-700">
-                        <span class="font-semibold text-slate-950">{{ $event->actor?->name ?? 'Sistema' }}</span>
+                        <span class="font-semibold text-slate-950">{{ $event->actorLabel() }}</span>
                         · {{ \App\Services\Activity\ActivityLabels::get($event->event_type) }}
                     </p>
                     <p class="mt-0.5 text-xs text-slate-400">{{ $event->created_at?->diffForHumans() }}</p>

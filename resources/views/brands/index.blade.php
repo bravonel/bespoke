@@ -107,14 +107,10 @@
                                         class="button-secondary py-1.5 text-xs"
                                     >Editar</button>
 
-                                    <form
-                                        method="POST"
-                                        action="{{ route('brands.destroy', $brand) }}"
-                                        onsubmit="return confirm('¿Eliminar marca {{ addslashes($brand->name) }}?')"
-                                    >
+                                    <form method="POST" action="{{ $brand->status === 'archived' ? route('brands.activate', $brand) : route('brands.deactivate', $brand) }}" onsubmit="return confirm('{{ $brand->status === 'archived' ? '¿Reactivar' : '¿Desactivar' }} marca {{ addslashes($brand->name) }}? Sus proyectos y su historial se conservarán.')">
                                         @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="rounded-xl border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100">Eliminar</button>
+                                        @method('PATCH')
+                                        <button type="submit" class="rounded-xl border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-800 transition hover:bg-amber-100">{{ $brand->status === 'archived' ? 'Reactivar' : 'Desactivar' }}</button>
                                     </form>
                                 </div>
                             </td>

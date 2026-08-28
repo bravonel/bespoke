@@ -51,12 +51,14 @@ Route::middleware(['auth', TrackUserActivity::class])->group(function (): void {
     Route::get('clients', [ClientController::class, 'index'])->name('clients.index');
     Route::post('clients', [ClientController::class, 'store'])->name('clients.store');
     Route::patch('clients/{client}', [ClientController::class, 'update'])->name('clients.update');
-    Route::delete('clients/{client}', [ClientController::class, 'destroy'])->name('clients.destroy');
+    Route::patch('clients/{client}/deactivate', [ClientController::class, 'deactivate'])->name('clients.deactivate');
+    Route::patch('clients/{client}/activate', [ClientController::class, 'activate'])->name('clients.activate');
 
     Route::get('brands', [BrandController::class, 'index'])->name('brands.index');
     Route::post('brands', [BrandController::class, 'store'])->name('brands.store');
     Route::patch('brands/{brand}', [BrandController::class, 'update'])->name('brands.update');
-    Route::delete('brands/{brand}', [BrandController::class, 'destroy'])->name('brands.destroy');
+    Route::patch('brands/{brand}/deactivate', [BrandController::class, 'deactivate'])->name('brands.deactivate');
+    Route::patch('brands/{brand}/activate', [BrandController::class, 'activate'])->name('brands.activate');
 
     Route::get('qr-codes', [QrCodeController::class, 'index'])->name('qr-codes.index');
     Route::get('qr-codes/create', [QrCodeController::class, 'create'])->name('qr-codes.create');
@@ -74,7 +76,8 @@ Route::middleware(['auth', TrackUserActivity::class])->group(function (): void {
     Route::post('projects', [ProjectController::class, 'store'])->name('projects.store');
     Route::get('projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
     Route::patch('projects/{project}', [ProjectController::class, 'update'])->name('projects.update');
-    Route::delete('projects/{project}', [ProjectController::class, 'destroy'])->name('projects.destroy');
+    Route::patch('projects/{project}/archive', [ProjectController::class, 'archive'])->name('projects.archive');
+    Route::patch('projects/{project}/restore', [ProjectController::class, 'restore'])->name('projects.restore');
 
     Route::get('tasks/{task}', [TaskController::class, 'show'])->name('tasks.show');
     Route::patch('tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
