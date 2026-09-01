@@ -11,4 +11,5 @@ Artisan::command('inspire', function () {
 Schedule::command('activity:expire-sessions')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('activity:detect-anomalies')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('activity:verify-chain')->dailyAt('02:10')->withoutOverlapping();
+Schedule::command('activity:aggregate-analytics')->dailyAt('02:00')->withoutOverlapping();
 Schedule::command('activity:prune')->dailyAt('02:30')->withoutOverlapping();

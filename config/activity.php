@@ -2,8 +2,10 @@
 
 return [
     'audit_retention_days' => (int) env('ACTIVITY_AUDIT_RETENTION_DAYS', 730),
-    'session_retention_days' => (int) env('ACTIVITY_SESSION_RETENTION_DAYS', 365),
-    'ui_retention_days' => (int) env('ACTIVITY_UI_RETENTION_DAYS', 90),
+    // These windows identify records ready for a future verified archive.
+    // The scheduled command never deletes raw telemetry.
+    'session_retention_days' => (int) env('ACTIVITY_SESSION_RETENTION_DAYS', 730),
+    'ui_retention_days' => (int) env('ACTIVITY_UI_RETENTION_DAYS', 730),
     'session_idle_minutes' => (int) env('ACTIVITY_SESSION_IDLE_MINUTES', 30),
 
     'ui_events' => [

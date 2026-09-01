@@ -27,7 +27,11 @@ targets:
 - A technical interaction proves presence in Bespoke OS but never counts as proof that a task was completed; canonical business changes are the source of evidence for completion and status disputes.
 - Viewing and exporting the activity center are themselves audited.
 - Project and task views show recent entity timelines.
-- Retention is configurable by data class; a scheduled command purges expired UI/session detail while preserving canonical audit events for their longer window.
+- Retention is configurable by data class; a scheduled command reports expired UI/session detail while preserving canonical audit events permanently.
+- Raw UI events and user-session telemetry are never deleted by an automatic schedule. The retention window identifies archive candidates only.
+- A daily, idempotent aggregation stores permanent analytics by date, user, project, event type and page before any record becomes archive-eligible.
+- The scheduled retention command reports candidate counts and the date through which analytics have been aggregated; it performs no destructive operation.
+- Any future raw-data deletion requires a separate, explicit archive-and-verify workflow and is never enabled merely through an environment variable.
 - The system never captures keystrokes, pointer coordinates, clipboard data, screenshots, passwords, tokens or unsaved form values.
 
 [@test](../tests/Feature/Activity/ActivitySystemTest.php)
