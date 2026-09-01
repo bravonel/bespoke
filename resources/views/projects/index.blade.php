@@ -4,7 +4,7 @@
             <div>
                 <p class="page-kicker">Operación diaria</p>
                 <h1 class="page-title mt-2">Proyectos</h1>
-                <p class="mt-2 max-w-2xl text-sm text-slate-600">Aquí empieza el módulo tipo Monday, pero más ligero: participantes claros, siguiente paso visible y tareas conectadas al proyecto.</p>
+                <p class="mt-2 max-w-2xl text-sm text-slate-600">Consulta el estado de cada proyecto, sus responsables, próximos pasos y fechas de entrega.</p>
             </div>
 
             <button
