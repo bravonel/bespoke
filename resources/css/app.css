@@ -115,7 +115,7 @@
     }
 
     .board-list {
-        @apply mt-5 flex flex-1 flex-col gap-4;
+        @apply mt-5 flex flex-1 flex-col gap-3;
         min-height: 18rem;
     }
 
@@ -124,7 +124,7 @@
     }
 
     .task-card--compact {
-        @apply rounded-[1.75rem] p-4;
+        @apply rounded-2xl p-3.5;
     }
 
     .task-card.is-dragging {

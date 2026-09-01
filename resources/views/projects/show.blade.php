@@ -327,7 +327,11 @@
                                         ? (int) round(($task->completed_subtasks_count / $task->subtasks_count) * 100)
                                         : 0;
                                     $isOverdue = ! in_array($task->status, \App\Models\Task::inactiveStatuses(), true) && $task->due_at?->isPast();
-                                    $openSubtasksCount = $task->subtasks_count - $task->completed_subtasks_count;
+                                    $cardContext = $task->status === 'todo'
+                                        ? ($task->blocked_reason ?: $task->return_reason)
+                                        : null;
+                                    $cardDate = $task->due_at ?: $task->planned_for;
+                                    $cardDateLabel = $task->due_at ? 'Entrega' : 'Carga';
                                 @endphp
 
                                 <article
@@ -340,41 +344,44 @@
                                     data-assignee="{{ $task->assignments->pluck('user.name')->filter()->unique()->join('|') ?: ($task->assignee?->name ?? '') }}"
                                     data-priority="{{ $task->priority }}"
                                 >
-                                    <div class="flex items-start gap-3">
+                                    <div class="flex items-start gap-2.5">
                                         <div class="min-w-0 flex-1">
-                                            <button type="button" class="task-card__link text-left" data-open-task>
-                                                <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                                            <button type="button" class="task-card__link text-left" data-open-task aria-label="Abrir tarea {{ $task->title }}">
+                                                <p class="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                                                     {{ $task->assignments->pluck('user.name')->filter()->unique()->join(', ') ?: ($task->assignee?->name ?: 'Sin asignar') }}
                                                 </p>
-                                                <h3 class="mt-1.5 text-sm font-semibold text-slate-950">{{ $task->title }}</h3>
-                                                @if ($task->personal_priority)
-                                                    <span class="mt-2 inline-flex rounded-full bg-slate-950 px-2 py-0.5 text-[10px] font-bold text-white">Orden #{{ $task->personal_priority }}</span>
-                                                @endif
+                                                <h3 class="mt-1 line-clamp-2 text-sm font-semibold leading-5 text-slate-950">{{ $task->title }}</h3>
 
-                                                <div class="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold">
-                                                    <span class="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-slate-600">
+                                                <div class="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] font-semibold text-slate-500">
+                                                    <span class="inline-flex items-center gap-1.5">
+                                                        <span class="h-1.5 w-1.5 rounded-full {{ $task->priority === 'high' ? 'bg-rose-500' : ($task->priority === 'low' ? 'bg-sky-400' : 'bg-amber-400') }}"></span>
                                                         {{ $taskPriorityMeta[$task->priority]['label'] }}
                                                     </span>
-                                                    <span class="rounded-full border px-2.5 py-1 {{ $isOverdue ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-stone-200 bg-stone-50 text-slate-500' }}">
-                                                        {{ $task->due_at?->translatedFormat('d M Y') ?: 'Sin fecha' }}
-                                                    </span>
-                                                    <span class="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-slate-500">
-                                                        Carga {{ $task->planned_for?->translatedFormat('d M') ?: 'sin fecha' }}
-                                                    </span>
-                                                    <span class="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-slate-500">
-                                                        {{ \App\Models\Task::formatEstimatedMinutes($task->estimated_minutes) }}
-                                                    </span>
-                                                    <span class="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-slate-500">
-                                                        {{ $task->completed_subtasks_count }}/{{ $task->subtasks_count }} lista
-                                                    </span>
-                                                    @if ($openSubtasksCount > 0)
-                                                        <span class="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-amber-700">
-                                                            {{ $openSubtasksCount }} pendiente{{ $openSubtasksCount > 1 ? 's' : '' }}
+                                                    @if ($cardDate)
+                                                        <span class="inline-flex items-center gap-1 {{ $isOverdue ? 'text-rose-700' : '' }}" data-tooltip="{{ $cardDateLabel }}: {{ $cardDate->translatedFormat('d M Y') }}">
+                                                            <x-heroicon-o-calendar-days class="h-3.5 w-3.5" aria-hidden="true" />
+                                                            {{ $cardDate->translatedFormat('d M') }}
                                                         </span>
                                                     @endif
+                                                    <span class="inline-flex items-center gap-1">
+                                                        <x-heroicon-o-clock class="h-3.5 w-3.5" aria-hidden="true" />
+                                                        {{ \App\Models\Task::formatEstimatedMinutes($task->estimated_minutes) }}
+                                                    </span>
+                                                    @if ($task->subtasks_count > 0)
+                                                        <span class="inline-flex items-center gap-1">
+                                                            <x-heroicon-o-check-circle class="h-3.5 w-3.5" aria-hidden="true" />
+                                                            {{ $task->completed_subtasks_count }}/{{ $task->subtasks_count }}
+                                                        </span>
+                                                    @endif
+                                                    @if ($task->personal_priority)
+                                                        <span class="rounded-full bg-slate-950 px-2 py-0.5 text-[9px] font-bold text-white">#{{ $task->personal_priority }}</span>
+                                                    @endif
                                                 </div>
-                                                @if ($task->status === 'todo' && $task->blocked_reason)
-                                                    <p class="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs leading-5 text-rose-800">{{ $task->blocked_reason }}</p>
+                                                @if ($cardContext)
+                                                    <p class="mt-2.5 line-clamp-2 rounded-xl border border-rose-100 bg-rose-50 px-2.5 py-2 text-[11px] leading-4 text-rose-800">
+                                                        <span class="font-semibold">{{ $task->blocked_reason ? 'Por destrabar:' : 'Corrección:' }}</span>
+                                                        {{ $cardContext }}
+                                                    </p>
                                                 @endif
                                             </button>
                                         </div>
@@ -389,8 +396,8 @@
                                     </div>
 
                                     @if ($task->subtasks_count > 0)
-                                        <div class="mt-4">
-                                            <div class="progress-track mt-0">
+                                        <div class="mt-3">
+                                            <div class="progress-track mt-0 h-1.5">
                                                 <span class="progress-fill" style="width: {{ $subtaskProgress }}%"></span>
                                             </div>
                                         </div>
