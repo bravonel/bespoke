@@ -31,7 +31,12 @@
             <form
                 method="POST"
                 action="{{ route('tasks.destroy', $task) }}"
-                onsubmit="return confirm('¿Eliminar esta tarea? No se puede deshacer.')"
+                data-confirm-modal
+                data-confirm-tone="danger"
+                data-confirm-title="Eliminar tarea"
+                data-confirm-message="¿Quieres eliminar “{{ $task->title }}”? Esta acción no se puede deshacer."
+                data-confirm-detail="La evidencia de auditoría permanecerá protegida."
+                data-confirm-action="Eliminar tarea"
                 class="inline"
             >
                 @csrf

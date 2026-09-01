@@ -267,6 +267,45 @@ const activityTracker = (() => {
 
 window.bespokeActivity = activityTracker;
 
+window.bespokeDialog = (options = {}) => new Promise((resolve) => {
+    activityTracker.track('modal.opened', options.mode || 'confirmation');
+    window.dispatchEvent(new CustomEvent('app-dialog-open', {
+        detail: { ...options, resolve },
+    }));
+});
+
+document.addEventListener('submit', async (event) => {
+    const form = event.target;
+
+    if (!(form instanceof HTMLFormElement) || !form.matches('[data-confirm-modal]')) return;
+    if (form.dataset.confirmed === 'true') return;
+
+    event.preventDefault();
+
+    if (form.dataset.confirmPending === 'true') return;
+
+    const submitter = event.submitter;
+    form.dataset.confirmPending = 'true';
+
+    const confirmed = await window.bespokeDialog({
+        mode: 'confirm',
+        tone: form.dataset.confirmTone || 'warning',
+        title: form.dataset.confirmTitle || 'Confirma esta acción',
+        message: form.dataset.confirmMessage || '',
+        detail: form.dataset.confirmDetail || '',
+        confirmLabel: form.dataset.confirmAction || 'Confirmar',
+        cancelLabel: form.dataset.confirmCancel || 'Cancelar',
+    });
+
+    delete form.dataset.confirmPending;
+
+    if (!confirmed) return;
+
+    form.dataset.confirmed = 'true';
+    form.requestSubmit(submitter || undefined);
+    delete form.dataset.confirmed;
+});
+
 let lastTrackedPage = null;
 const trackPageView = () => {
     const page = document.body.dataset.activityPage;
@@ -485,23 +524,47 @@ const initializeTaskBoards = () => {
             };
 
             if (sourceStatus === 'in_progress' && targetStatus === 'todo') {
-                const reason = window.prompt('¿Qué impide avanzar? El motivo quedará visible en la tarjeta.');
+                const reason = await window.bespokeDialog({
+                    mode: 'prompt',
+                    tone: 'warning',
+                    title: '¿Qué impide avanzar?',
+                    message: 'Comparte el contexto para regresar la tarea a Por hacer.',
+                    detail: 'El motivo quedará visible en la tarjeta para que el equipo sepa qué hace falta.',
+                    label: 'Motivo del bloqueo',
+                    placeholder: 'Describe qué falta, quién debe resolverlo o de qué depende…',
+                    confirmLabel: 'Guardar y mover',
+                    required: true,
+                });
 
-                if (!reason?.trim()) {
-                    throw new Error('El motivo es obligatorio para regresar la tarea a Por hacer.');
+                if (reason === null) {
+                    const cancellation = new Error('Movimiento cancelado.');
+                    cancellation.isDialogCancellation = true;
+                    throw cancellation;
                 }
 
-                payload.blocked_reason = reason.trim();
+                payload.blocked_reason = reason;
             }
 
             if (['done', 'finalized'].includes(sourceStatus) && !['done', 'finalized'].includes(targetStatus)) {
-                const reason = window.prompt('¿Qué debe corregirse para devolver esta tarea?');
+                const reason = await window.bespokeDialog({
+                    mode: 'prompt',
+                    tone: 'warning',
+                    title: '¿Qué debe corregirse?',
+                    message: 'Explica por qué esta tarea vuelve a una etapa anterior.',
+                    detail: 'Este contexto ayuda a la persona responsable a atender la devolución.',
+                    label: 'Motivo de devolución',
+                    placeholder: 'Describe el ajuste o la corrección pendiente…',
+                    confirmLabel: 'Registrar devolución',
+                    required: true,
+                });
 
-                if (!reason?.trim()) {
-                    throw new Error('El motivo de devolución es obligatorio.');
+                if (reason === null) {
+                    const cancellation = new Error('Movimiento cancelado.');
+                    cancellation.isDialogCancellation = true;
+                    throw cancellation;
                 }
 
-                payload.return_reason = reason.trim();
+                payload.return_reason = reason;
             }
 
             if (sourceColumn && sourceColumn !== targetColumn) {
@@ -575,7 +638,16 @@ const initializeTaskBoards = () => {
                     await syncBoard(draggedCard, targetColumn);
                 } catch (error) {
                     restoreBoard();
-                    window.alert(error.message);
+
+                    if (!error.isDialogCancellation) {
+                        await window.bespokeDialog({
+                            mode: 'error',
+                            tone: 'danger',
+                            title: 'No se pudo mover la tarjeta',
+                            message: error.message || 'Ocurrió un error inesperado. Intenta de nuevo.',
+                            confirmLabel: 'Entendido',
+                        });
+                    }
                 } finally {
                     columns.forEach((item) => item.classList.remove('is-drop-target'));
                     draggedCard.classList.remove('is-dragging');

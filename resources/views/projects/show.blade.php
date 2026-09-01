@@ -522,7 +522,17 @@
                     </div>
                 </form>
 
-                <form id="archive-project-form" method="POST" action="{{ route('projects.archive', $project) }}" onsubmit="return confirm('¿Archivar el proyecto {{ addslashes($project->name) }}? Sus tareas y su historial se conservarán.')">
+                <form
+                    id="archive-project-form"
+                    method="POST"
+                    action="{{ route('projects.archive', $project) }}"
+                    data-confirm-modal
+                    data-confirm-tone="warning"
+                    data-confirm-title="Archivar {{ $project->name }}"
+                    data-confirm-message="El proyecto dejará de aparecer en la operación activa."
+                    data-confirm-detail="Sus tareas y su historial se conservarán."
+                    data-confirm-action="Archivar proyecto"
+                >
                     @csrf
                     @method('PATCH')
                 </form>
@@ -538,7 +548,7 @@
         @if ($canManageProject)
         <div
             x-show="taskModal"
-            x-on:keydown.escape.window="taskModal = false"
+            x-on:keydown.escape.window="if (!window.bespokeDialogIsOpen) taskModal = false"
             class="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 sm:px-0"
             style="display:none"
         >

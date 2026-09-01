@@ -107,7 +107,15 @@
                                         class="button-secondary py-1.5 text-xs"
                                     >Editar</button>
 
-                                    <form method="POST" action="{{ $brand->status === 'archived' ? route('brands.activate', $brand) : route('brands.deactivate', $brand) }}" onsubmit="return confirm('{{ $brand->status === 'archived' ? '¿Reactivar' : '¿Desactivar' }} marca {{ addslashes($brand->name) }}? Sus proyectos y su historial se conservarán.')">
+                                    <form
+                                        method="POST"
+                                        action="{{ $brand->status === 'archived' ? route('brands.activate', $brand) : route('brands.deactivate', $brand) }}"
+                                        data-confirm-modal
+                                        data-confirm-tone="{{ $brand->status === 'archived' ? 'success' : 'warning' }}"
+                                        data-confirm-title="{{ $brand->status === 'archived' ? 'Reactivar' : 'Desactivar' }} la marca {{ $brand->name }}"
+                                        data-confirm-message="{{ $brand->status === 'archived' ? 'La marca volverá a estar disponible para la operación.' : 'Sus proyectos y su historial se conservarán sin cambios.' }}"
+                                        data-confirm-action="{{ $brand->status === 'archived' ? 'Reactivar marca' : 'Desactivar marca' }}"
+                                    >
                                         @csrf
                                         @method('PATCH')
                                         <button type="submit" class="rounded-xl border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-800 transition hover:bg-amber-100">{{ $brand->status === 'archived' ? 'Reactivar' : 'Desactivar' }}</button>

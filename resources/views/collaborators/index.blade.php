@@ -136,7 +136,12 @@
                                         <form
                                             method="POST"
                                             action="{{ route('collaborators.deactivate', $collaborator) }}"
-                                            onsubmit="return confirm('¿Dar de baja a {{ addslashes($collaborator->name) }}? Ya no podrá iniciar sesión ni aparecerá como opción para nuevas asignaciones.')"
+                                            data-confirm-modal
+                                            data-confirm-tone="danger"
+                                            data-confirm-title="Dar de baja a {{ $collaborator->name }}"
+                                            data-confirm-message="Ya no podrá iniciar sesión ni aparecerá como opción para nuevas asignaciones."
+                                            data-confirm-detail="Su actividad y su historial se conservarán."
+                                            data-confirm-action="Dar de baja"
                                         >
                                             @csrf
                                             @method('PATCH')

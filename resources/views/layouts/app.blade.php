@@ -61,7 +61,7 @@
             <div
                 x-data="taskDrawer()"
                 x-on:open-task-drawer.window="open($event.detail.url)"
-                x-on:keydown.escape.window="close()"
+                x-on:keydown.escape.window="if (!window.bespokeDialogIsOpen) close()"
                 x-show="isOpen"
                 class="fixed inset-0 z-50"
                 style="display:none"
@@ -275,7 +275,7 @@
                             }
                         },
                     }"
-                    x-on:keydown.escape.window="open = false"
+                    x-on:keydown.escape.window="if (!window.bespokeDialogIsOpen) open = false"
                     class="fixed z-50"
                     style="right:1.5rem; bottom:1.5rem"
                 >
@@ -401,6 +401,8 @@
                     </section>
                 </div>
             @endauth
+
+            <x-interaction-dialog />
         </div>
     </body>
 </html>

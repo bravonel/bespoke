@@ -96,7 +96,15 @@
                                         class="button-secondary py-1.5 text-xs"
                                     >Editar</button>
 
-                                    <form method="POST" action="{{ $client->status === 'archived' ? route('clients.activate', $client) : route('clients.deactivate', $client) }}" onsubmit="return confirm('{{ $client->status === 'archived' ? '¿Reactivar' : '¿Desactivar' }} cliente {{ addslashes($client->name) }}? Sus proyectos y su historial se conservarán.')">
+                                    <form
+                                        method="POST"
+                                        action="{{ $client->status === 'archived' ? route('clients.activate', $client) : route('clients.deactivate', $client) }}"
+                                        data-confirm-modal
+                                        data-confirm-tone="{{ $client->status === 'archived' ? 'success' : 'warning' }}"
+                                        data-confirm-title="{{ $client->status === 'archived' ? 'Reactivar' : 'Desactivar' }} a {{ $client->name }}"
+                                        data-confirm-message="{{ $client->status === 'archived' ? 'El cliente volverá a estar disponible para la operación.' : 'Sus proyectos y su historial se conservarán sin cambios.' }}"
+                                        data-confirm-action="{{ $client->status === 'archived' ? 'Reactivar cliente' : 'Desactivar cliente' }}"
+                                    >
                                         @csrf
                                         @method('PATCH')
                                         <button type="submit" class="rounded-xl border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-800 transition hover:bg-amber-100">{{ $client->status === 'archived' ? 'Reactivar' : 'Desactivar' }}</button>
