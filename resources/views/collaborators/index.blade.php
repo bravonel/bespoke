@@ -124,11 +124,12 @@
                             <td>
                                 @if ($canManageCollaborators)
                                     <div class="flex flex-wrap items-center justify-end gap-2">
-                                    <button
-                                        type="button"
+                                    <x-icon-button
+                                        label="Editar colaborador {{ $collaborator->name }}"
+                                        icon="pencil"
+                                        size="sm"
                                         data-open-modal="edit-collaborator-{{ $collaborator->id }}"
-                                        class="button-secondary py-1.5 text-xs"
-                                    >Editar</button>
+                                    />
 
                                     @if ($collaborator->is(auth()->user()))
                                         <span class="rounded-xl border border-stone-200 bg-stone-50 px-2.5 py-1.5 text-xs font-semibold text-slate-500">Tu usuario</span>
@@ -145,13 +146,24 @@
                                         >
                                             @csrf
                                             @method('PATCH')
-                                            <button type="submit" class="rounded-xl border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100">Dar de baja</button>
+                                            <button
+                                                type="submit"
+                                                class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
+                                                aria-label="Dar de baja a {{ $collaborator->name }}"
+                                                data-tooltip="Dar de baja a {{ $collaborator->name }}"
+                                            >
+                                                <x-heroicon-o-user-minus class="h-4 w-4" aria-hidden="true" />
+                                                <span>Baja</span>
+                                            </button>
                                         </form>
                                     @else
                                         <form method="POST" action="{{ route('collaborators.activate', $collaborator) }}">
                                             @csrf
                                             @method('PATCH')
-                                            <button type="submit" class="rounded-xl border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100">Reactivar</button>
+                                            <button type="submit" class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100">
+                                                <x-heroicon-o-power class="h-4 w-4" aria-hidden="true" />
+                                                <span>Reactivar</span>
+                                            </button>
                                         </form>
                                     @endif
                                     </div>

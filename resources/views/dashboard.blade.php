@@ -255,10 +255,10 @@
                                                         @if ($activity['user_id'])
                                                             <input type="hidden" name="user_id" value="{{ $activity['user_id'] }}">
                                                         @endif
-                                                        <button class="button-secondary px-3 py-1.5 text-xs">Pasar a mañana</button>
+                                                        <x-icon-button type="submit" label="Pasar tarea a mañana" icon="calendar-days" size="sm" />
                                                     </form>
                                                 @elseif ($project)
-                                                    <a href="{{ route('projects.show', ['project' => $project, 'edit' => 1]) }}" class="button-secondary px-3 py-1.5 text-xs">Editar proyecto</a>
+                                                    <x-icon-link href="{{ route('projects.show', ['project' => $project, 'edit' => 1]) }}" label="Editar proyecto" icon="pencil" size="sm" />
                                                 @endif
                                             </td>
                                         </tr>

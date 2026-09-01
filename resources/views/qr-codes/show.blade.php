@@ -11,7 +11,11 @@
                 <div class="mt-3 flex items-center gap-3"><h1 class="page-title truncate">{{ $qrCode->name }}</h1><span class="shrink-0 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[.16em] {{ $qrCode->status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-stone-200 text-slate-500' }}">{{ ['active' => 'Activo', 'paused' => 'Pausado', 'archived' => 'Archivado'][$qrCode->status] }}</span></div>
                 <p class="mt-2 truncate text-sm text-slate-500">{{ $qrCode->client?->name ?: 'Sin cliente' }}{{ $qrCode->brand ? ' · '.$qrCode->brand->name : '' }} · creado {{ $qrCode->created_at->diffForHumans() }}</p>
             </div>
-            <div class="flex flex-wrap gap-2"><a href="{{ route('qr-codes.print', $qrCode) }}" target="_blank" class="button-secondary"><svg class="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v7H6z"/></svg>Imprimir</a><a href="{{ route('qr-codes.export', $qrCode) }}" class="button-secondary">Exportar datos</a><button type="button" data-open-modal="edit-qr" class="button-primary">Editar QR</button></div>
+            <div class="flex flex-wrap gap-2">
+                <a href="{{ route('qr-codes.print', $qrCode) }}" target="_blank" class="button-secondary gap-2 whitespace-nowrap"><x-heroicon-o-printer class="h-4 w-4" aria-hidden="true" />Imprimir</a>
+                <a href="{{ route('qr-codes.export', $qrCode) }}" class="button-secondary gap-2 whitespace-nowrap" data-tooltip="Exportar datos del QR" aria-label="Exportar datos del QR"><x-heroicon-o-arrow-down-tray class="h-4 w-4" aria-hidden="true" />Datos</a>
+                <button type="button" data-open-modal="edit-qr" class="button-primary gap-2 whitespace-nowrap"><x-heroicon-o-pencil class="h-4 w-4" aria-hidden="true" />Editar</button>
+            </div>
         </div>
     </x-slot>
 
@@ -28,7 +32,7 @@
 
                 <section class="panel p-5">
                     <p class="metric-label">URL dinámica</p>
-                    <div class="mt-3 flex items-center gap-2"><code class="min-w-0 flex-1 truncate rounded-xl bg-stone-100 px-3 py-2 text-xs text-slate-600">{{ $qrCode->shortUrl() }}</code><button type="button" x-on:click="copyUrl()" class="button-secondary shrink-0 px-3 py-2 text-xs" x-text="copied ? 'Copiado' : 'Copiar'"></button></div>
+                    <div class="mt-3 flex items-center gap-2"><code class="min-w-0 flex-1 truncate rounded-xl bg-stone-100 px-3 py-2 text-xs text-slate-600">{{ $qrCode->shortUrl() }}</code><button type="button" x-on:click="copyUrl()" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-stone-200 bg-white text-slate-500 transition hover:bg-stone-50 hover:text-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2" x-bind:aria-label="copied ? 'URL copiada' : 'Copiar URL'" x-bind:data-tooltip="copied ? 'URL copiada' : 'Copiar URL'"><x-heroicon-o-clipboard-document class="h-4 w-4" aria-hidden="true" /></button></div>
                     <div class="mt-4 border-t border-stone-100 pt-4"><div class="flex items-center justify-between gap-3"><p class="text-xs text-slate-400">Destino actual</p>@if($qrCode->tracking_parameters['enabled'] ?? false)<span class="rounded-full bg-emerald-100 px-2 py-1 text-[9px] font-semibold uppercase tracking-[.12em] text-emerald-700">UTM activo</span>@endif</div><a href="{{ $qrCode->trackedDestinationUrl() }}" target="_blank" rel="noopener" class="mt-1 block truncate text-sm font-medium text-slate-700 hover:text-[#e91e8c]">{{ $qrCode->trackedDestinationUrl() }}</a></div>
                 </section>
             </aside>
@@ -79,7 +83,7 @@
         <x-modal name="edit-qr" focusable>
             <form method="POST" action="{{ route('qr-codes.update', $qrCode) }}" enctype="multipart/form-data">
                 @csrf @method('PATCH')
-                <div class="modal-header flex items-start justify-between"><div><h2 class="text-lg font-semibold text-slate-950">Editar señal</h2><p class="mt-1 text-sm text-slate-500">El QR impreso seguirá siendo el mismo.</p></div><button type="button" x-on:click="$dispatch('close')" class="text-slate-400 hover:text-slate-700">✕</button></div>
+                <div class="modal-header flex items-start justify-between"><div><h2 class="text-lg font-semibold text-slate-950">Editar señal</h2><p class="mt-1 text-sm text-slate-500">El QR impreso seguirá siendo el mismo.</p></div><x-icon-button label="Cerrar edición" icon="x-mark" size="sm" x-on:click="$dispatch('close')" /></div>
                 <div class="modal-body space-y-5">
                     <div><label class="field-label" for="edit-name">Nombre</label><input id="edit-name" name="name" class="field" value="{{ $qrCode->name }}" required></div>
                     <div><label class="field-label" for="edit-url">Destino</label><input id="edit-url" name="destination_url" type="url" class="field" value="{{ $qrCode->destination_url }}" required x-on:input="$dispatch('destination-url-changed', $event.target.value)"></div>

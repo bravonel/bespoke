@@ -19,7 +19,10 @@
                 <x-status-badge :value="$project->status" />
                 <x-status-badge :value="$project->current_stage" />
                 @if ($canManageProject)
-                    <button type="button" @click="$dispatch('open-modal', 'edit-project')" data-open-modal="edit-project" class="button-secondary">Editar proyecto</button>
+                    <button type="button" @click="$dispatch('open-modal', 'edit-project')" data-open-modal="edit-project" class="button-secondary gap-2 whitespace-nowrap">
+                        <x-heroicon-o-pencil class="h-4 w-4" aria-hidden="true" />
+                        Editar
+                    </button>
                 @endif
                 <a href="{{ route('projects.index') }}" class="button-secondary">Volver</a>
             </div>
@@ -378,7 +381,9 @@
 
                                         <div class="flex shrink-0 flex-col items-end gap-2">
                                             @if ($canManageProject || in_array(auth()->id(), $task->assignedUserIds(), true))
-                                                <span class="drag-handle hidden md:inline-flex">Arrastrar</span>
+                                                <span class="drag-handle hidden h-9 w-9 items-center justify-center px-0 md:inline-flex" aria-label="Arrastrar tarea" data-tooltip="Arrastrar tarea">
+                                                    <x-heroicon-o-bars-3 class="h-4 w-4" aria-hidden="true" />
+                                                </span>
                                             @endif
                                         </div>
                                     </div>

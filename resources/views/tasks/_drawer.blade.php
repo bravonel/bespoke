@@ -21,12 +21,13 @@
 
         <div class="flex shrink-0 items-center gap-2 pt-1">
             @if ($canManageTask)
-            <button
-                type="button"
+            <x-icon-button
+                label="Editar tarea"
+                icon="pencil"
+                size="sm"
                 data-view
                 onclick="this.closest('[data-drwr]').classList.add('is-editing')"
-                class="button-secondary py-1.5 text-xs"
-            >Editar</button>
+            />
 
             <form
                 method="POST"
@@ -41,7 +42,7 @@
             >
                 @csrf
                 @method('DELETE')
-                <button type="submit" class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100">Eliminar</button>
+                <x-icon-button label="Eliminar tarea" icon="trash" tone="danger" size="sm" type="submit" />
             </form>
             @endif
         </div>
@@ -52,19 +53,33 @@
         {{-- Estatus y datos --}}
         <div class="mb-6 flex flex-wrap items-center gap-3">
             @if ($canOperateTask)
-            <form method="POST" action="{{ route('tasks.update-status', $task) }}" class="grid w-full gap-2 sm:grid-cols-[auto_1fr_1fr_auto]">
+            <form method="POST" action="{{ route('tasks.update-status', $task) }}" class="w-full space-y-3 rounded-2xl border border-stone-200 bg-stone-50/70 p-3">
                 @csrf
                 @method('PATCH')
-                <select name="status" class="field mt-0 py-2 text-sm">
-                    @foreach ($taskStatuses as $status)
-                        <option value="{{ $status }}" @selected($task->status === $status)>
-                            {{ $taskStatusMeta[$status]['label'] }}
-                        </option>
-                    @endforeach
-                </select>
-                <input name="blocked_reason" class="field mt-0 py-2 text-sm" placeholder="Motivo al regresar a Por hacer">
-                <input name="return_reason" class="field mt-0 py-2 text-sm" placeholder="Corrección si devuelves">
-                <button class="button-secondary py-2 text-sm">Guardar</button>
+                <div class="flex items-center gap-2">
+                    <label for="drawer-task-status-{{ $task->id }}" class="sr-only">Estatus de la tarea</label>
+                    <select id="drawer-task-status-{{ $task->id }}" name="status" class="field mt-0 min-w-0 flex-1 py-2 text-sm">
+                        @foreach ($taskStatuses as $status)
+                            <option value="{{ $status }}" @selected($task->status === $status)>
+                                {{ $taskStatusMeta[$status]['label'] }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <button class="button-secondary gap-2 py-2 text-sm">
+                        <x-heroicon-o-check class="h-4 w-4" aria-hidden="true" />
+                        Guardar
+                    </button>
+                </div>
+                <div class="grid gap-2 sm:grid-cols-2">
+                    <label class="block">
+                        <span class="text-xs font-medium text-slate-500">Bloqueo, si regresa a Por hacer</span>
+                        <input name="blocked_reason" class="field mt-1.5 py-2 text-sm" placeholder="Describe qué impide avanzar">
+                    </label>
+                    <label class="block">
+                        <span class="text-xs font-medium text-slate-500">Corrección, si se devuelve</span>
+                        <input name="return_reason" class="field mt-1.5 py-2 text-sm" placeholder="Describe qué debe corregirse">
+                    </label>
+                </div>
             </form>
             @endif
 

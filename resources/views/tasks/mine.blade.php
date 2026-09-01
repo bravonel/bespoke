@@ -117,7 +117,7 @@
                                             @csrf
                                             @method('PATCH')
                                             <input type="hidden" name="planned_for" value="{{ today()->addDay()->format('Y-m-d') }}">
-                                            <button class="button-secondary px-3 py-1.5 text-xs">Pasar a mañana</button>
+                                            <x-icon-button type="submit" label="Pasar tarea a mañana" icon="calendar-days" size="sm" />
                                         </form>
                                     @endif
 

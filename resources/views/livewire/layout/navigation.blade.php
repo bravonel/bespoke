@@ -29,7 +29,7 @@ new class extends Component
                 </div>
 
                 <!-- Navigation Links -->
-                <div class="hidden space-x-6 sm:-my-px sm:ms-8 sm:flex">
+                <div class="hidden xl:-my-px xl:ms-6 xl:flex xl:space-x-4 2xl:ms-8 2xl:space-x-6">
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" wire:navigate>
                         {{ __('Resumen') }}
                     </x-nav-link>
@@ -47,7 +47,7 @@ new class extends Component
                     </x-nav-link>
 
                     <x-nav-link :href="route('qr-codes.index')" :active="request()->routeIs('qr-codes.*')" wire:navigate>
-                        {{ __('QR Studio') }}
+                        {{ __('QR') }}
                     </x-nav-link>
 
                     <x-nav-link :href="route('collaborators.index')" :active="request()->routeIs('collaborators.*')" wire:navigate>
@@ -55,7 +55,7 @@ new class extends Component
                     </x-nav-link>
 
                     <x-nav-link :href="route('tasks.mine')" :active="request()->routeIs('tasks.mine')" wire:navigate>
-                        {{ __('Mis tareas') }}
+                        {{ __('Tareas') }}
                     </x-nav-link>
 
                     <x-nav-link :href="route('activity.index')" :active="request()->routeIs('activity.*')" wire:navigate>
@@ -65,11 +65,11 @@ new class extends Component
             </div>
 
             <!-- Settings Dropdown -->
-            <div class="hidden sm:flex sm:items-center sm:ms-6">
+            <div class="hidden xl:flex xl:items-center xl:ms-4">
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
                         <button class="inline-flex items-center rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm font-medium leading-4 text-slate-600 transition hover:border-stone-300 hover:text-slate-800 focus:outline-none">
-                            <div x-data="{{ json_encode(['name' => auth()->user()->name]) }}" x-text="name" x-on:profile-updated.window="name = $event.detail.name"></div>
+                            <div class="max-w-32 truncate whitespace-nowrap" x-data="{{ json_encode(['name' => auth()->user()->name]) }}" x-text="name" x-on:profile-updated.window="name = $event.detail.name"></div>
 
                             <div class="ms-1">
                                 <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
@@ -95,20 +95,24 @@ new class extends Component
             </div>
 
             <!-- Hamburger -->
-            <div class="-me-2 flex items-center sm:hidden">
-                <button @click="open = ! open" class="inline-flex items-center justify-center rounded-2xl p-2 text-slate-500 transition hover:bg-stone-100 hover:text-slate-700 focus:outline-none">
-                    <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
-                        <path :class="{'hidden': open, 'inline-flex': ! open }" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                        <path :class="{'hidden': ! open, 'inline-flex': open }" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+            <div class="-me-2 flex items-center xl:hidden">
+                <button
+                    type="button"
+                    @click="open = ! open"
+                    class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-stone-200 bg-white text-slate-500 transition hover:bg-stone-100 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+                    :aria-label="open ? 'Cerrar menú' : 'Abrir menú'"
+                    :data-tooltip="open ? 'Cerrar menú' : 'Abrir menú'"
+                >
+                    <x-heroicon-o-bars-3 x-show="!open" class="h-5 w-5" aria-hidden="true" />
+                    <x-heroicon-o-x-mark x-show="open" class="h-5 w-5" style="display:none" aria-hidden="true" />
                 </button>
             </div>
         </div>
     </div>
 
     <!-- Responsive Navigation Menu -->
-    <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
-        <div class="pt-2 pb-3 space-y-1">
+    <div :class="{'block': open, 'hidden': ! open}" class="hidden border-t border-stone-200/80 xl:hidden">
+        <div class="grid gap-1 px-3 pb-3 pt-2 sm:grid-cols-2 lg:grid-cols-4">
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" wire:navigate>
                 {{ __('Resumen') }}
             </x-responsive-nav-link>

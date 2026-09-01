@@ -274,6 +274,65 @@ window.bespokeDialog = (options = {}) => new Promise((resolve) => {
     }));
 });
 
+let tooltipTimer = null;
+let activeTooltipTarget = null;
+
+const hideAppTooltip = () => {
+    window.clearTimeout(tooltipTimer);
+    tooltipTimer = null;
+    activeTooltipTarget = null;
+    window.dispatchEvent(new CustomEvent('app-tooltip-hide'));
+};
+
+const showAppTooltip = (target, delay = 350) => {
+    const label = target.dataset.tooltip?.trim();
+
+    if (!label) return;
+
+    window.clearTimeout(tooltipTimer);
+    activeTooltipTarget = target;
+    tooltipTimer = window.setTimeout(() => {
+        if (activeTooltipTarget !== target || !target.isConnected) return;
+
+        const rect = target.getBoundingClientRect();
+        const placement = rect.top > 56 ? 'top' : 'bottom';
+        const center = rect.left + rect.width / 2;
+        const align = center > window.innerWidth * 0.75 ? 'right' : center < window.innerWidth * 0.25 ? 'left' : 'center';
+        const left = align === 'right' ? Math.min(rect.right, window.innerWidth - 12) : align === 'left' ? Math.max(rect.left, 12) : center;
+        const top = placement === 'top' ? rect.top - 8 : rect.bottom + 8;
+
+        window.dispatchEvent(new CustomEvent('app-tooltip-show', {
+            detail: { label, left, top, placement, align },
+        }));
+    }, delay);
+};
+
+document.addEventListener('pointerover', (event) => {
+    const target = event.target.closest?.('[data-tooltip]');
+
+    if (!target || target.contains(event.relatedTarget)) return;
+
+    showAppTooltip(target);
+});
+
+document.addEventListener('pointerout', (event) => {
+    const target = event.target.closest?.('[data-tooltip]');
+
+    if (!target || target.contains(event.relatedTarget)) return;
+
+    hideAppTooltip();
+});
+
+document.addEventListener('focusin', (event) => {
+    const target = event.target.closest?.('[data-tooltip]');
+
+    if (target) showAppTooltip(target, 0);
+});
+
+document.addEventListener('focusout', (event) => {
+    if (event.target.closest?.('[data-tooltip]')) hideAppTooltip();
+});
+
 document.addEventListener('submit', async (event) => {
     const form = event.target;
 

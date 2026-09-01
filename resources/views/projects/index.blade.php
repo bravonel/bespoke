@@ -105,12 +105,19 @@
             </div>
 
             <div class="flex gap-2">
-                <button type="submit" class="button-secondary">Aplicar filtros</button>
-                <a href="{{ route('projects.export', request()->query()) }}" class="button-secondary" title="Descargar los proyectos filtrados en Excel">
-                    Descargar Excel
+                <button type="submit" class="button-secondary gap-2 whitespace-nowrap" aria-label="Aplicar filtros">
+                    <x-heroicon-o-funnel class="h-4 w-4" aria-hidden="true" />
+                    Aplicar
+                </button>
+                <a href="{{ route('projects.export', request()->query()) }}" class="button-secondary gap-2 whitespace-nowrap" data-tooltip="Descargar proyectos filtrados en Excel" aria-label="Descargar proyectos filtrados en Excel">
+                    <x-heroicon-o-arrow-down-tray class="h-4 w-4" aria-hidden="true" />
+                    Excel
                 </a>
                 @if (array_filter($filters))
-                    <a href="{{ route('projects.index') }}" class="button-secondary">Limpiar</a>
+                    <a href="{{ route('projects.index') }}" class="button-secondary gap-2 whitespace-nowrap">
+                        <x-heroicon-o-arrow-path class="h-4 w-4" aria-hidden="true" />
+                        Limpiar
+                    </a>
                 @endif
             </div>
         </form>
@@ -150,7 +157,7 @@
                             <td>{{ $project->workloads->pluck('user.name')->filter()->unique()->join(', ') ?: 'Sin asignar' }}</td>
                             <td>{{ $project->due_at?->translatedFormat('d M Y') ?: 'Sin fecha' }}</td>
                             <td>
-                                <a href="{{ route('projects.show', $project) }}" class="button-secondary">Ver detalle</a>
+                                <x-icon-link href="{{ route('projects.show', $project) }}" :label="'Abrir proyecto '.$project->name" icon="arrow-right" size="sm" />
                             </td>
                         </tr>
                     @empty

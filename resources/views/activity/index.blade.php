@@ -7,8 +7,14 @@
                 <p class="mt-2 max-w-3xl text-sm text-slate-600">Evidencia operativa para aclarar cuándo ingresó una persona, cuándo interactuó y cuándo realizó un cambio comprobable.</p>
             </div>
             <div class="flex flex-wrap gap-2">
-                <a href="{{ route('activity.export', request()->query()) }}" class="button-secondary" data-activity="report.exported" data-activity-target="activity-csv">Exportar CSV</a>
-                <a href="{{ route('activity.print', request()->query()) }}" target="_blank" class="button-secondary" data-activity="report.exported" data-activity-target="activity-pdf">Vista para PDF</a>
+                <a href="{{ route('activity.export', request()->query()) }}" class="button-secondary gap-2 whitespace-nowrap" data-activity="report.exported" data-activity-target="activity-csv" data-tooltip="Exportar actividad en CSV" aria-label="Exportar actividad en CSV">
+                    <x-heroicon-o-arrow-down-tray class="h-4 w-4" aria-hidden="true" />
+                    CSV
+                </a>
+                <a href="{{ route('activity.print', request()->query()) }}" target="_blank" class="button-secondary gap-2 whitespace-nowrap" data-activity="report.exported" data-activity-target="activity-pdf" data-tooltip="Abrir vista para imprimir o guardar como PDF" aria-label="Abrir vista para imprimir o guardar como PDF">
+                    <x-heroicon-o-document-arrow-down class="h-4 w-4" aria-hidden="true" />
+                    PDF
+                </a>
             </div>
         </div>
     </x-slot>
@@ -66,8 +72,14 @@
                     </select>
                 </div>
                 <div class="flex items-end gap-2 xl:col-span-6">
-                    <button class="button-primary">Aplicar filtros</button>
-                    <a href="{{ route('activity.index') }}" class="button-secondary">Limpiar</a>
+                    <button class="button-primary gap-2 whitespace-nowrap">
+                        <x-heroicon-o-funnel class="h-4 w-4" aria-hidden="true" />
+                        Aplicar
+                    </button>
+                    <a href="{{ route('activity.index') }}" class="button-secondary gap-2 whitespace-nowrap">
+                        <x-heroicon-o-arrow-path class="h-4 w-4" aria-hidden="true" />
+                        Limpiar
+                    </a>
                 </div>
             </form>
         </section>

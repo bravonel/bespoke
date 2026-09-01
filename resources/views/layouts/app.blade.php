@@ -87,7 +87,7 @@
                 >
                     <div class="sticky top-0 z-10 flex items-center justify-between border-b border-stone-200 bg-white/95 px-6 py-4 backdrop-blur">
                         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Detalle de tarea</p>
-                        <button type="button" x-on:click="close()" class="button-secondary py-1.5 text-xs">Cerrar ✕</button>
+                        <x-icon-button label="Cerrar detalle de tarea" icon="x-mark" size="sm" x-on:click="close()" />
                     </div>
 
                     <div class="p-6 lg:p-8">
@@ -403,6 +403,7 @@
             @endauth
 
             <x-interaction-dialog />
+            <x-app-tooltip />
         </div>
     </body>
 </html>

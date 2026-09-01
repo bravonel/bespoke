@@ -15,8 +15,8 @@
                     <p class="mt-3 max-w-2xl text-sm leading-6 text-white/60">Crea códigos dinámicos con identidad de marca, cambia su destino cuando lo necesites y mide el viaje completo desde el mundo físico.</p>
                 </div>
                 <a href="{{ route('qr-codes.create') }}" class="relative mt-6 inline-flex items-center gap-2 rounded-2xl bg-[#e91e8c] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#d4167c] lg:mt-0">
-                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-                    Crear nuevo QR
+                    <x-heroicon-o-plus class="h-4 w-4" aria-hidden="true" />
+                    Crear QR
                 </a>
             </div>
         </div>
@@ -67,7 +67,10 @@
                     </select>
                 </div>
                 <div class="flex gap-2">
-                    <button class="button-secondary">Filtrar</button>
+                    <button class="button-secondary gap-2 whitespace-nowrap">
+                        <x-heroicon-o-funnel class="h-4 w-4" aria-hidden="true" />
+                        Filtrar
+                    </button>
                     @if (collect($filters)->filter()->isNotEmpty())<a href="{{ route('qr-codes.index') }}" class="button-secondary">Limpiar</a>@endif
                 </div>
             </form>

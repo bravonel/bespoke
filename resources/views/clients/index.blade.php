@@ -90,11 +90,12 @@
                             <td>{{ $client->projects_count }}</td>
                             <td>
                                 <div class="flex items-center gap-2">
-                                    <button
-                                        type="button"
+                                    <x-icon-button
+                                        label="Editar cliente {{ $client->name }}"
+                                        icon="pencil"
+                                        size="sm"
                                         data-open-modal="edit-client-{{ $client->id }}"
-                                        class="button-secondary py-1.5 text-xs"
-                                    >Editar</button>
+                                    />
 
                                     <form
                                         method="POST"
@@ -107,7 +108,7 @@
                                     >
                                         @csrf
                                         @method('PATCH')
-                                        <button type="submit" class="rounded-xl border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-800 transition hover:bg-amber-100">{{ $client->status === 'archived' ? 'Reactivar' : 'Desactivar' }}</button>
+                                        <button type="submit" class="whitespace-nowrap rounded-xl border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-800 transition hover:bg-amber-100">{{ $client->status === 'archived' ? 'Reactivar' : 'Desactivar' }}</button>
                                     </form>
                                 </div>
                             </td>
