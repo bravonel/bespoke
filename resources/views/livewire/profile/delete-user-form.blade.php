@@ -59,7 +59,7 @@ new class extends Component
                     <x-input-error :messages="$errors->get('password')" class="mt-2" />
                 </div>
 
-                <div class="flex justify-end gap-3">
+                <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                     <button type="button" x-on:click="$dispatch('close')" class="button-secondary">Cancelar</button>
                     <button type="submit" class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100">
                         Sí, eliminar cuenta

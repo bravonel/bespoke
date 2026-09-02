@@ -66,7 +66,7 @@ $maxWidth = [
     {{-- Modal box --}}
     <div
         x-show="show"
-        class="relative w-full {{ $maxWidth }} overflow-hidden rounded-3xl border border-white/60 bg-white shadow-[0_32px_80px_-24px_rgba(15,23,42,0.45)]"
+        class="relative min-w-0 w-full {{ $maxWidth }} overflow-hidden rounded-3xl border border-white/60 bg-white shadow-[0_32px_80px_-24px_rgba(15,23,42,0.45)]"
         x-transition:enter="ease-out duration-200"
         x-transition:enter-start="opacity-0 translate-y-2 scale-95"
         x-transition:enter-end="opacity-100 translate-y-0 scale-100"

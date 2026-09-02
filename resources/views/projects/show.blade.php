@@ -508,12 +508,12 @@
                         'fieldPrefix' => 'ep-',
                     ])
 
-                    <div class="lg:col-span-2 flex items-center justify-between gap-3">
+                    <div class="lg:col-span-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         @if ($project->status === 'archived')
                             <button
                                 type="submit"
                                 form="restore-project-form"
-                                class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
+                                class="inline-flex justify-center rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
                             >
                                 Restaurar proyecto
                             </button>
@@ -521,13 +521,13 @@
                             <button
                                 type="submit"
                                 form="archive-project-form"
-                                class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-800 transition hover:bg-amber-100"
+                                class="inline-flex justify-center rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-800 transition hover:bg-amber-100"
                             >
                                 Archivar proyecto
                             </button>
                         @endif
 
-                        <div class="flex gap-3">
+                        <div class="flex flex-col-reverse gap-3 sm:flex-row">
                             <button type="button" x-on:click="$dispatch('close')" data-close-modal="edit-project" class="button-secondary">Cancelar</button>
                             <button class="button-primary">Guardar cambios</button>
                         </div>
@@ -661,7 +661,7 @@ Mandar a cliente"
                             <p class="mt-2 text-xs uppercase tracking-[0.18em] text-slate-400">Tip: si ya conoces la lista de pendientes, cárgala aquí y el equipo arranca con orden.</p>
                         </div>
 
-                        <div class="lg:col-span-2 flex justify-end gap-3">
+                        <div class="lg:col-span-2 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                             <button type="button" @click="taskModal = false" class="button-secondary">Cancelar</button>
                             <button class="button-primary">Agregar tarea</button>
                         </div>

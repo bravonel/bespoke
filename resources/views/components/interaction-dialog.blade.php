@@ -129,7 +129,7 @@
     <section
         x-show="open"
         x-on:click.stop
-        class="relative w-full max-w-lg overflow-hidden rounded-3xl border border-white/70 bg-white shadow-[0_32px_90px_-24px_rgba(15,23,42,0.55)]"
+        class="relative min-w-0 w-full max-w-lg overflow-hidden rounded-3xl border border-white/70 bg-white shadow-[0_32px_90px_-24px_rgba(15,23,42,0.55)]"
         x-transition:enter="ease-out duration-200"
         x-transition:enter-start="translate-y-3 scale-95 opacity-0"
         x-transition:enter-end="translate-y-0 scale-100 opacity-100"

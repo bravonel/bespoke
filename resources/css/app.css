@@ -98,7 +98,7 @@
     }
 
     .board-grid {
-        @apply grid gap-5 md:grid-cols-2 xl:grid-cols-5;
+        @apply grid w-full gap-5 md:grid-cols-2 xl:grid-cols-4;
     }
 
     .board-column {
@@ -170,11 +170,21 @@
     }
 
     .modal-body {
-        @apply max-h-[75vh] overflow-x-hidden overflow-y-auto p-7;
+        @apply min-w-0 max-h-[75vh] overflow-x-hidden overflow-y-auto p-5 sm:p-7;
+    }
+
+    .modal-body > *,
+    .modal-body form,
+    .modal-body form > * {
+        @apply min-w-0;
     }
 
     .modal-footer {
-        @apply flex justify-end gap-3 border-t border-stone-200 px-7 py-5;
+        @apply flex flex-col-reverse gap-3 border-t border-stone-200 px-5 py-5 sm:flex-row sm:justify-end sm:px-7;
+    }
+
+    .modal-footer > * {
+        @apply justify-center;
     }
 
     .qr-signal-grid {

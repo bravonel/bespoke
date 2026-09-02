@@ -186,7 +186,7 @@
                         <textarea id="ec-notes-{{ $client->id }}" name="notes" rows="3" class="field">{{ $client->notes }}</textarea>
                     </div>
 
-                    <div class="sm:col-span-2 flex justify-end gap-3">
+                    <div class="sm:col-span-2 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                         <button type="button" x-on:click="$dispatch('close')" class="button-secondary">Cancelar</button>
                         <button class="button-primary">Guardar cambios</button>
                     </div>
@@ -246,7 +246,7 @@
                     <textarea id="client-notes" name="notes" rows="3" class="field">{{ old('notes') }}</textarea>
                 </div>
 
-                <div class="sm:col-span-2 flex justify-end gap-3">
+                <div class="sm:col-span-2 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                     <button type="button" x-on:click="$dispatch('close')" class="button-secondary">Cancelar</button>
                     <button class="button-primary">Guardar cliente</button>
                 </div>

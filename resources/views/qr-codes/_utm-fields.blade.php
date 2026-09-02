@@ -78,8 +78,8 @@
             <div x-ref="customList" class="space-y-3">
                 <template x-for="(parameter, index) in custom" x-bind:key="index">
                     <div class="grid grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)_auto] items-end gap-2">
-                        <div><label class="field-label">Parámetro</label><input class="field" x-model="parameter.key" x-bind:name="`custom_parameters[${index}][key]`" placeholder="ref"></div>
-                        <div><label class="field-label">Valor</label><input class="field" x-model="parameter.value" x-bind:name="`custom_parameters[${index}][value]`" placeholder="stand-a"></div>
+                        <div class="min-w-0"><label class="field-label">Parámetro</label><input class="field" x-model="parameter.key" x-bind:name="`custom_parameters[${index}][key]`" placeholder="ref"></div>
+                        <div class="min-w-0"><label class="field-label">Valor</label><input class="field" x-model="parameter.value" x-bind:name="`custom_parameters[${index}][value]`" placeholder="stand-a"></div>
                         <button type="button" class="mb-0.5 grid h-11 w-11 place-items-center rounded-xl border border-stone-200 bg-white text-slate-400 transition hover:border-rose-200 hover:text-rose-600" x-on:click="removeCustom(index)" aria-label="Quitar parámetro">×</button>
                     </div>
                 </template>

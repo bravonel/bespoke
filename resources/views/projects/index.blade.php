@@ -272,7 +272,7 @@
                         'fieldPrefix' => 'project-',
                     ])
 
-                    <div class="lg:col-span-2 flex justify-end gap-3">
+                    <div class="lg:col-span-2 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                         <button type="button" x-on:click="show = false" class="button-secondary">Cancelar</button>
                         <button class="button-primary">Crear proyecto</button>
                     </div>

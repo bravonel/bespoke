@@ -275,7 +275,7 @@
                         <input id="ec-password-confirmation-{{ $collaborator->id }}" type="password" name="password_confirmation" class="field" autocomplete="new-password">
                     </div>
 
-                    <div class="sm:col-span-2 flex justify-end gap-3">
+                    <div class="sm:col-span-2 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                         <button type="button" x-on:click="$dispatch('close')" class="button-secondary">Cancelar</button>
                         <button class="button-primary">Guardar cambios</button>
                     </div>
@@ -363,7 +363,7 @@
                     <input id="collaborator-password-confirmation" type="password" name="password_confirmation" class="field" required autocomplete="new-password">
                 </div>
 
-                <div class="sm:col-span-2 flex justify-end gap-3">
+                <div class="sm:col-span-2 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                     <button type="button" x-on:click="$dispatch('close')" class="button-secondary">Cancelar</button>
                     <button class="button-primary">Crear colaborador</button>
                 </div>

@@ -192,7 +192,7 @@
                 </div>
             </div>
 
-            <div class="flex justify-end gap-3 border-t border-stone-200 bg-stone-50 px-6 py-4">
+            <div class="flex flex-col-reverse gap-3 border-t border-stone-200 bg-stone-50 px-6 py-4 sm:flex-row sm:justify-end">
                 <button type="button" class="button-secondary" x-on:click="$dispatch('close')">Cancelar</button>
                 <button type="submit" class="button-primary">Guardar reemplazo</button>
             </div>
@@ -212,7 +212,7 @@
                         <h2 class="mt-4 text-lg font-semibold text-slate-950">Cancelar cobertura</h2>
                         <p class="mt-2 text-sm leading-6 text-slate-600">{{ $coverage->delegate->name }} dejará de tener acceso temporal a tu trabajo. Esta acción no elimina ninguna tarea ni actividad.</p>
                     </div>
-                    <div class="flex justify-end gap-3 border-t border-stone-200 bg-stone-50 px-6 py-4">
+                    <div class="flex flex-col-reverse gap-3 border-t border-stone-200 bg-stone-50 px-6 py-4 sm:flex-row sm:justify-end">
                         <button type="button" class="button-secondary" x-on:click="$dispatch('close')">Conservar</button>
                         <x-danger-button>Sí, cancelar</x-danger-button>
                     </div>
