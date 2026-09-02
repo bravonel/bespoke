@@ -15,6 +15,6 @@
     $label = OperationalLabels::get($value);
 @endphp
 
-<span {{ $attributes->merge(['class' => "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset {$palette}"]) }}>
+<span {{ $attributes->merge(['class' => "inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset {$palette}"]) }}>
     {{ $label }}
 </span>
