@@ -17,9 +17,11 @@ new class extends Component
 }; ?>
 
 @php
-    $taskUnreadCount = \Illuminate\Support\Facades\Schema::hasTable('notifications')
-        ? auth()->user()->unreadNotifications()->count()
-        : 0;
+    $taskActiveCount = app(\App\Services\Access\OperationalAccess::class)
+        ->workQueue(auth()->user())
+        ->whereHas('project', fn ($query) => $query->where('status', '!=', 'archived'))
+        ->whereNotIn('status', \App\Models\Task::inactiveStatuses())
+        ->count();
 @endphp
 
 <nav x-data="{ open: false }" class="sticky top-0 z-40 border-b border-white/70 bg-white/85 backdrop-blur">
@@ -65,9 +67,9 @@ new class extends Component
                     <x-nav-link :href="route('tasks.mine')" :active="request()->routeIs('tasks.mine')" wire:navigate>
                         <span class="inline-flex items-center gap-2 whitespace-nowrap">
                             {{ __('Mis tareas') }}
-                            @if ($taskUnreadCount > 0)
-                                <span class="inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[#e91e8c] px-1.5 text-[10px] font-bold leading-none text-white" aria-label="{{ $taskUnreadCount }} {{ $taskUnreadCount === 1 ? 'novedad' : 'novedades' }} sin leer">
-                                    {{ $taskUnreadCount > 99 ? '99+' : $taskUnreadCount }}
+                            @if ($taskActiveCount > 0)
+                                <span class="inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[#e91e8c] px-1.5 text-[10px] font-bold leading-none text-white" aria-label="{{ $taskActiveCount }} {{ $taskActiveCount === 1 ? 'tarea activa' : 'tareas activas' }}">
+                                    {{ $taskActiveCount > 99 ? '99+' : $taskActiveCount }}
                                 </span>
                             @endif
                         </span>
@@ -159,9 +161,9 @@ new class extends Component
             <x-responsive-nav-link :href="route('tasks.mine')" :active="request()->routeIs('tasks.mine')" wire:navigate>
                 <span class="inline-flex items-center gap-2">
                     {{ __('Mis tareas') }}
-                    @if ($taskUnreadCount > 0)
-                        <span class="inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[#e91e8c] px-1.5 text-[10px] font-bold leading-none text-white" aria-label="{{ $taskUnreadCount }} {{ $taskUnreadCount === 1 ? 'novedad' : 'novedades' }} sin leer">
-                            {{ $taskUnreadCount > 99 ? '99+' : $taskUnreadCount }}
+                    @if ($taskActiveCount > 0)
+                        <span class="inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[#e91e8c] px-1.5 text-[10px] font-bold leading-none text-white" aria-label="{{ $taskActiveCount }} {{ $taskActiveCount === 1 ? 'tarea activa' : 'tareas activas' }}">
+                            {{ $taskActiveCount > 99 ? '99+' : $taskActiveCount }}
                         </span>
                     @endif
                 </span>

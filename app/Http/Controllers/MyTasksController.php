@@ -16,20 +16,16 @@ class MyTasksController extends Controller
         $operationalUserIds = [$user->id, ...$coveredUserIds];
         $today = today();
 
-        $tasks = Task::query()
+        $tasks = $access->workQueue($user)
             ->whereHas('project', fn ($query) => $query->where('status', '!=', 'archived'))
-            ->where(fn ($query) => $query
-                ->whereIn('assigned_to', $operationalUserIds)
-                ->orWhereHas('assignments', fn ($assignment) => $assignment->whereIn('user_id', $operationalUserIds))
-                ->when($coveredUserIds, fn ($query) => $query->orWhereHas(
-                    'project',
-                    fn ($project) => $project->whereIn('owner_id', $coveredUserIds)
-                )))
             ->with([
                 'project.client',
                 'project.brand',
                 'project.owner',
-                'assignments' => fn ($query) => $query->whereIn('user_id', $operationalUserIds)->with('user'),
+                'assignments' => fn ($query) => $query
+                    ->whereIn('user_id', $operationalUserIds)
+                    ->orderByRaw('user_id = ? desc', [$user->id])
+                    ->with('user'),
                 'subtasks' => fn ($q) => $q->orderBy('sort_order')->orderBy('id'),
             ])
             ->withCount('subtasks')
@@ -44,23 +40,20 @@ class MyTasksController extends Controller
             ->orderBy('due_at')
             ->orderBy('id')
             ->get()
-            ->each(function (Task $task) use ($coveredUserIds): void {
+            ->each(function (Task $task) use ($access, $user): void {
                 $assignment = $task->assignments->first();
+                $isPersonal = (int) $task->assigned_to === (int) $user->id
+                    || $task->assignments->contains('user_id', $user->id);
+                $coverage = $isPersonal ? null : $access->coverageForTask($user, $task);
+                $task->setAttribute('coverage_name', $coverage?->owner?->name);
 
                 if (! $assignment) {
-                    $coveredByOwner = in_array((int) $task->project->owner_id, $coveredUserIds, true);
-                    $task->setAttribute('coverage_name', $coveredByOwner ? $task->project->owner->name : null);
-
                     return;
                 }
 
                 $task->setAttribute('planned_for', $assignment->work_date);
                 $task->setAttribute('estimated_minutes', $assignment->estimated_minutes);
                 $task->setAttribute('personal_priority', $assignment->personal_priority);
-                $task->setAttribute(
-                    'coverage_name',
-                    in_array((int) $assignment->user_id, $coveredUserIds, true) ? $assignment->user->name : null
-                );
             });
 
         $openTasks = $tasks->whereNotIn('status', Task::inactiveStatuses());

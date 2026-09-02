@@ -23,6 +23,7 @@ class TemporaryCoverageTest extends TestCase
             'starts_on' => today()->format('Y-m-d'),
             'ends_on' => today()->addWeek()->format('Y-m-d'),
             'note' => 'Dar seguimiento a los pendientes urgentes.',
+            'scope_mode' => 'all',
         ])->assertRedirect();
 
         $coverage = TemporaryCoverage::query()->firstOrFail();
@@ -60,6 +61,7 @@ class TemporaryCoverageTest extends TestCase
                 'delegate_user_id' => $invalidDelegate->id,
                 'starts_on' => today()->format('Y-m-d'),
                 'ends_on' => today()->addDay()->format('Y-m-d'),
+                'scope_mode' => 'all',
             ])->assertRedirect(route('profile'))->assertSessionHasErrors('delegate_user_id');
         }
 
@@ -67,13 +69,15 @@ class TemporaryCoverageTest extends TestCase
             'delegate_user_id' => $delegate->id,
             'starts_on' => today()->addDays(2)->format('Y-m-d'),
             'ends_on' => today()->addDays(5)->format('Y-m-d'),
+            'scope_mode' => 'all',
         ])->assertRedirect();
 
         $this->actingAs($owner)->from(route('profile'))->post(route('coverages.store'), [
             'delegate_user_id' => User::factory()->create(['role' => User::ROLE_DESIGN])->id,
             'starts_on' => today()->addDays(4)->format('Y-m-d'),
             'ends_on' => today()->addDays(7)->format('Y-m-d'),
-        ])->assertRedirect(route('profile'))->assertSessionHasErrors('starts_on');
+            'scope_mode' => 'all',
+        ])->assertRedirect(route('profile'))->assertSessionHasErrors('scope_mode');
     }
 
     public function test_active_coverage_grants_operational_access_without_management_privileges(): void
@@ -117,6 +121,79 @@ class TemporaryCoverageTest extends TestCase
         $this->actingAs($delegate)
             ->delete(route('tasks.destroy', $task))
             ->assertForbidden();
+    }
+
+    public function test_owner_can_use_multiple_replacements_for_different_accounts(): void
+    {
+        [$owner, $firstDelegate, $firstProject, $firstTask] = $this->fixture();
+        $secondDelegate = User::factory()->create(['role' => User::ROLE_MEDICAL]);
+        $secondClient = Client::query()->create(['name' => 'Segunda cuenta', 'status' => 'active']);
+        $secondProject = Project::query()->create([
+            'client_id' => $secondClient->id,
+            'owner_id' => $owner->id,
+            'name' => 'Segundo proyecto cubierto',
+            'code' => 'COB-002',
+            'status' => 'active',
+            'current_stage' => 'medical',
+            'priority' => 'normal',
+        ]);
+        $secondTask = $secondProject->tasks()->create([
+            'title' => 'Tarea de la segunda cuenta',
+            'status' => 'todo',
+            'priority' => 'normal',
+            'sort_order' => 1,
+        ]);
+
+        $dates = [
+            'starts_on' => today()->format('Y-m-d'),
+            'ends_on' => today()->addWeek()->format('Y-m-d'),
+            'scope_mode' => 'selected',
+        ];
+
+        $this->actingAs($owner)->post(route('coverages.store'), [
+            ...$dates,
+            'delegate_user_id' => $firstDelegate->id,
+            'client_ids' => [$firstProject->client_id],
+        ])->assertRedirect();
+
+        $this->actingAs($owner)->post(route('coverages.store'), [
+            ...$dates,
+            'delegate_user_id' => $secondDelegate->id,
+            'project_ids' => [$secondProject->id],
+        ])->assertRedirect();
+
+        $this->assertSame(2, TemporaryCoverage::query()->count());
+
+        $this->actingAs($firstDelegate)->get(route('tasks.show', $firstTask))->assertOk();
+        $this->actingAs($firstDelegate)->get(route('tasks.show', $secondTask))->assertForbidden();
+        $this->actingAs($secondDelegate)->get(route('tasks.show', $secondTask))->assertOk();
+        $this->actingAs($secondDelegate)->get(route('tasks.show', $firstTask))->assertForbidden();
+
+        $this->actingAs($firstDelegate)
+            ->get(route('tasks.mine'))
+            ->assertOk()
+            ->assertSee('1 tarea activa');
+
+        $manager = User::factory()->create(['role' => User::ROLE_ACCOUNTS]);
+        $this->actingAs($manager)->post(route('tasks.comments.store', $firstTask), ['body' => 'Aviso de la primera cuenta.']);
+        $this->actingAs($manager)->post(route('tasks.comments.store', $secondTask), ['body' => 'Aviso de la segunda cuenta.']);
+
+        $firstTaskNotices = $firstDelegate->notifications()
+            ->get()
+            ->where('data.kind', 'task.commented');
+        $secondTaskNotices = $secondDelegate->notifications()
+            ->get()
+            ->where('data.kind', 'task.commented');
+
+        $this->assertSame([$firstTask->id], $firstTaskNotices->pluck('data.task_id')->values()->all());
+        $this->assertSame([$secondTask->id], $secondTaskNotices->pluck('data.task_id')->values()->all());
+
+        $thirdDelegate = User::factory()->create(['role' => User::ROLE_DESIGN]);
+        $this->actingAs($owner)->from(route('profile'))->post(route('coverages.store'), [
+            ...$dates,
+            'delegate_user_id' => $thirdDelegate->id,
+            'project_ids' => [$firstProject->id],
+        ])->assertRedirect(route('profile'))->assertSessionHasErrors('scope_mode');
     }
 
     public function test_future_expired_revoked_and_chained_coverages_do_not_grant_access(): void

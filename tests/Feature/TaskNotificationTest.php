@@ -39,7 +39,7 @@ class TaskNotificationTest extends TestCase
             ->assertOk()
             ->assertSee('Novedades')
             ->assertSee('Preparar propuesta visual')
-            ->assertSee('1 novedad sin leer');
+            ->assertSee('1 tarea activa');
     }
 
     public function test_comment_and_status_changes_notify_other_task_participants(): void

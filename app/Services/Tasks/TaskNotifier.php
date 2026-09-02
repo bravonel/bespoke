@@ -86,9 +86,17 @@ class TaskNotifier
         $userIds = collect($userIds)->filter()->unique();
 
         if (Schema::hasTable('temporary_coverages')) {
-            $userIds->push(...TemporaryCoverage::query()
+            $coverages = TemporaryCoverage::query()
                 ->effective()
                 ->whereIn('owner_user_id', $userIds)
+                ->when(
+                    Schema::hasTable('temporary_coverage_scopes'),
+                    fn ($query) => $query->with('scopes')
+                )
+                ->get();
+
+            $userIds->push(...$coverages
+                ->filter(fn (TemporaryCoverage $coverage) => $coverage->coversProject($task->project))
                 ->pluck('delegate_user_id'));
         }
 
