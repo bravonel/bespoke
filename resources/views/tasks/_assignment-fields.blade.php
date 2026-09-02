@@ -34,8 +34,8 @@
     </div>
 
     <template x-for="(assignment, index) in assignments" :key="index">
-        <div class="grid gap-3 rounded-2xl bg-stone-50 p-3 sm:grid-cols-2 xl:grid-cols-[minmax(11rem,1.4fr)_10rem_9rem_7rem_auto]">
-            <div>
+        <div class="grid min-w-0 gap-3 rounded-2xl bg-stone-50 p-3 sm:grid-cols-2">
+            <div class="min-w-0 sm:col-span-2">
                 <label class="field-label" :for="'assignment-user-' + index">Persona</label>
                 <select :id="'assignment-user-' + index" :name="`assignments[${index}][user_id]`" x-model="assignment.user_id" class="field mt-0">
                     <option value="">Sin asignar</option>
@@ -48,20 +48,20 @@
                     @endforeach
                 </select>
             </div>
-            <div>
+            <div class="min-w-0">
                 <label class="field-label" :for="'assignment-date-' + index">Día de carga</label>
                 <input :id="'assignment-date-' + index" type="date" :name="`assignments[${index}][work_date]`" x-model="assignment.work_date" class="field mt-0">
             </div>
-            <div>
+            <div class="min-w-0">
                 <label class="field-label" :for="'assignment-hours-' + index">Horas</label>
                 <input :id="'assignment-hours-' + index" type="number" min="0" max="24" step="0.25" :name="`assignments[${index}][estimated_hours]`" x-model="assignment.estimated_hours" class="field mt-0">
             </div>
-            <div>
+            <div class="min-w-0">
                 <label class="field-label" :for="'assignment-priority-' + index">Orden</label>
                 <input :id="'assignment-priority-' + index" type="number" min="1" max="999" :name="`assignments[${index}][personal_priority]`" x-model="assignment.personal_priority" class="field mt-0">
             </div>
-            <div class="flex items-end">
-                <button type="button" @click="remove(index)" class="button-secondary w-full px-3 py-2.5 text-xs xl:w-auto">Quitar</button>
+            <div class="flex min-w-0 items-end sm:justify-end">
+                <button type="button" @click="remove(index)" class="button-secondary w-full px-3 py-2.5 text-xs sm:w-auto">Quitar</button>
             </div>
         </div>
     </template>
