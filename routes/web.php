@@ -33,20 +33,22 @@ Route::middleware(['auth', TrackUserActivity::class])->group(function (): void {
     Route::post('ai/assistant/speech', AiSpeechController::class)->name('ai.assistant.speech');
     Route::post('activity/heartbeat', [ActivityIngestionController::class, 'heartbeat'])->name('activity.heartbeat');
     Route::post('activity/ui-events', [ActivityIngestionController::class, 'uiEvents'])->name('activity.ui-events');
-    Route::get('activity', [ActivityController::class, 'index'])->name('activity.index');
-    Route::get('activity/export', [ActivityController::class, 'export'])->name('activity.export');
-    Route::get('activity/print', [ActivityController::class, 'print'])->name('activity.print');
-    Route::patch('activity/alerts/{alert}/resolve', [ActivityController::class, 'resolveAlert'])->name('activity.alerts.resolve');
+    Route::middleware('super-admin')->group(function (): void {
+        Route::get('activity', [ActivityController::class, 'index'])->name('activity.index');
+        Route::get('activity/export', [ActivityController::class, 'export'])->name('activity.export');
+        Route::get('activity/print', [ActivityController::class, 'print'])->name('activity.print');
+        Route::patch('activity/alerts/{alert}/resolve', [ActivityController::class, 'resolveAlert'])->name('activity.alerts.resolve');
+
+        Route::get('collaborators', [CollaboratorController::class, 'index'])->name('collaborators.index');
+        Route::post('collaborators', [CollaboratorController::class, 'store'])->name('collaborators.store');
+        Route::patch('collaborators/{collaborator}', [CollaboratorController::class, 'update'])->name('collaborators.update');
+        Route::patch('collaborators/{collaborator}/deactivate', [CollaboratorController::class, 'deactivate'])->name('collaborators.deactivate');
+        Route::patch('collaborators/{collaborator}/activate', [CollaboratorController::class, 'activate'])->name('collaborators.activate');
+    });
 
     Route::get('my-tasks', MyTasksController::class)->name('tasks.mine');
 
     Route::patch('users/{user}/capacity', [UserCapacityController::class, 'update'])->name('users.capacity.update');
-
-    Route::get('collaborators', [CollaboratorController::class, 'index'])->name('collaborators.index');
-    Route::post('collaborators', [CollaboratorController::class, 'store'])->name('collaborators.store');
-    Route::patch('collaborators/{collaborator}', [CollaboratorController::class, 'update'])->name('collaborators.update');
-    Route::patch('collaborators/{collaborator}/deactivate', [CollaboratorController::class, 'deactivate'])->name('collaborators.deactivate');
-    Route::patch('collaborators/{collaborator}/activate', [CollaboratorController::class, 'activate'])->name('collaborators.activate');
 
     Route::get('clients', [ClientController::class, 'index'])->name('clients.index');
     Route::post('clients', [ClientController::class, 'store'])->name('clients.store');

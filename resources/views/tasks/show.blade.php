@@ -226,7 +226,9 @@
             @endif
         </section>
         <div class="mt-6">
-            @include('activity._timeline', ['recentActivity' => $recentActivity])
+            @if (auth()->user()->isAdmin())
+                @include('activity._timeline', ['recentActivity' => $recentActivity])
+            @endif
         </div>
     </div>
 </x-app-layout>

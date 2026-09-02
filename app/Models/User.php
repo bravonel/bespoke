@@ -83,7 +83,15 @@ class User extends Authenticatable
 
     public function isAdmin(): bool
     {
-        return $this->hasRole(self::ROLE_ADMIN);
+        return $this->hasRole(self::ROLE_ADMIN) && self::isSuperAdminEmail($this->email);
+    }
+
+    public static function isSuperAdminEmail(?string $email): bool
+    {
+        $allowedEmails = config('bespoke.super_admin_emails', []);
+
+        return in_array('*', $allowedEmails, true)
+            || in_array(strtolower(trim((string) $email)), $allowedEmails, true);
     }
 
     /**
@@ -92,7 +100,7 @@ class User extends Authenticatable
     public static function roleOptions(): array
     {
         return [
-            self::ROLE_ADMIN => 'Administrador',
+            self::ROLE_ADMIN => 'Superadministrador',
             self::ROLE_DIRECTION => 'Dirección',
             self::ROLE_ACCOUNTS => 'Cuentas',
             self::ROLE_TRAFFIC_PM => 'Tráfico / PM',

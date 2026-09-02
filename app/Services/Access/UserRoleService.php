@@ -8,10 +8,14 @@ use InvalidArgumentException;
 
 class UserRoleService
 {
-    public function assertRoleChangeAllowed(User $user, ?string $newRole): void
+    public function assertRoleChangeAllowed(User $user, ?string $newRole, ?string $newEmail = null): void
     {
         if ($newRole !== null && ! array_key_exists($newRole, User::roleOptions())) {
             throw new InvalidArgumentException('Rol de usuario inválido.');
+        }
+
+        if ($newRole === User::ROLE_ADMIN && ! User::isSuperAdminEmail($newEmail ?? $user->email)) {
+            throw new DomainException('El acceso de superadministrador está reservado para Sony y Marco.');
         }
 
         if ($user->isAdmin() && $newRole !== User::ROLE_ADMIN && ! $this->hasAnotherActiveAdmin($user)) {
@@ -32,6 +36,7 @@ class UserRoleService
             ->active()
             ->where('role', User::ROLE_ADMIN)
             ->whereKeyNot($user->getKey())
-            ->exists();
+            ->get()
+            ->contains(fn (User $candidate): bool => $candidate->isAdmin());
     }
 }

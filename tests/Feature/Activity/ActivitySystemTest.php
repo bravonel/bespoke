@@ -51,7 +51,7 @@ class ActivitySystemTest extends TestCase
         $this->assertNotContains('keystroke.captured', config('activity.ui_events'));
     }
 
-    public function test_regular_user_sees_only_own_activity_but_admin_sees_team(): void
+    public function test_regular_user_cannot_open_activity_but_admin_sees_team(): void
     {
         $first = User::factory()->create(['role' => User::ROLE_DESIGN]);
         $second = User::factory()->create(['role' => User::ROLE_MEDICAL]);
@@ -59,10 +59,9 @@ class ActivitySystemTest extends TestCase
         app(AuditLogger::class)->record('user.tested', $first, $first);
         app(AuditLogger::class)->record('user.tested', $second, $second);
 
-        $ownResponse = $this->actingAs($first)->get(route('activity.index'));
-        $this->assertTrue($ownResponse->viewData('events')->every(fn ($event) => $event->actor_id === $first->id));
-
-        $ownResponse->assertDontSee('Seguimiento por colaborador');
+        $this->actingAs($first)
+            ->get(route('activity.index'))
+            ->assertForbidden();
 
         $teamResponse = $this->actingAs($admin)->get(route('activity.index'));
         $actorIds = $teamResponse->viewData('events')->pluck('actor_id');

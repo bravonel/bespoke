@@ -671,7 +671,9 @@ Mandar a cliente"
         </div>
         @endif
         <div class="mt-6">
-            @include('activity._timeline', ['recentActivity' => $recentActivity, 'project' => $project])
+            @if (auth()->user()->isAdmin())
+                @include('activity._timeline', ['recentActivity' => $recentActivity, 'project' => $project])
+            @endif
         </div>
     </div>
 </x-app-layout>

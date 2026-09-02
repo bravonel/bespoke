@@ -87,6 +87,16 @@ class CollaboratorController extends Controller
         $validated = $this->validatedAttributes($request, new User);
         $validated['email_verified_at'] = now();
 
+        try {
+            $this->roles->assertRoleChangeAllowed(
+                new User(['email' => $validated['email']]),
+                $validated['role'] ?? null,
+                $validated['email'],
+            );
+        } catch (DomainException $exception) {
+            return back()->withErrors(['role' => $exception->getMessage()])->withInput();
+        }
+
         $collaborator = User::create($validated);
         $this->audit->record('user.created', $collaborator, $request->user(), [
             'role' => $collaborator->role,
@@ -103,7 +113,11 @@ class CollaboratorController extends Controller
         $validated = $this->validatedAttributes($request, $collaborator, isUpdate: true);
 
         try {
-            $this->roles->assertRoleChangeAllowed($collaborator, $validated['role'] ?? null);
+            $this->roles->assertRoleChangeAllowed(
+                $collaborator,
+                $validated['role'] ?? null,
+                $validated['email'] ?? $collaborator->email,
+            );
         } catch (DomainException $exception) {
             return back()->with('status', $exception->getMessage());
         }

@@ -50,17 +50,21 @@ new class extends Component
                         {{ __('QR') }}
                     </x-nav-link>
 
-                    <x-nav-link :href="route('collaborators.index')" :active="request()->routeIs('collaborators.*')" wire:navigate>
-                        {{ __('Colaboradores') }}
-                    </x-nav-link>
+                    @if (auth()->user()->isAdmin())
+                        <x-nav-link :href="route('collaborators.index')" :active="request()->routeIs('collaborators.*')" wire:navigate>
+                            {{ __('Colaboradores') }}
+                        </x-nav-link>
+                    @endif
 
                     <x-nav-link :href="route('tasks.mine')" :active="request()->routeIs('tasks.mine')" wire:navigate>
                         {{ __('Tareas') }}
                     </x-nav-link>
 
-                    <x-nav-link :href="route('activity.index')" :active="request()->routeIs('activity.*')" wire:navigate>
-                        {{ auth()->user()->canViewTeamActivity() ? __('Actividad') : __('Mi actividad') }}
-                    </x-nav-link>
+                    @if (auth()->user()->isAdmin())
+                        <x-nav-link :href="route('activity.index')" :active="request()->routeIs('activity.*')" wire:navigate>
+                            {{ __('Actividad') }}
+                        </x-nav-link>
+                    @endif
                 </div>
             </div>
 
@@ -133,17 +137,21 @@ new class extends Component
                 {{ __('QR Studio') }}
             </x-responsive-nav-link>
 
-            <x-responsive-nav-link :href="route('collaborators.index')" :active="request()->routeIs('collaborators.*')" wire:navigate>
-                {{ __('Colaboradores') }}
-            </x-responsive-nav-link>
+            @if (auth()->user()->isAdmin())
+                <x-responsive-nav-link :href="route('collaborators.index')" :active="request()->routeIs('collaborators.*')" wire:navigate>
+                    {{ __('Colaboradores') }}
+                </x-responsive-nav-link>
+            @endif
 
             <x-responsive-nav-link :href="route('tasks.mine')" :active="request()->routeIs('tasks.mine')" wire:navigate>
                 {{ __('Mis tareas') }}
             </x-responsive-nav-link>
 
-            <x-responsive-nav-link :href="route('activity.index')" :active="request()->routeIs('activity.*')" wire:navigate>
-                {{ auth()->user()->canViewTeamActivity() ? __('Actividad') : __('Mi actividad') }}
-            </x-responsive-nav-link>
+            @if (auth()->user()->isAdmin())
+                <x-responsive-nav-link :href="route('activity.index')" :active="request()->routeIs('activity.*')" wire:navigate>
+                    {{ __('Actividad') }}
+                </x-responsive-nav-link>
+            @endif
         </div>
 
         <!-- Responsive Settings Options -->
