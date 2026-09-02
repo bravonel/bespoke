@@ -9,12 +9,15 @@ use App\Http\Controllers\ClientController;
 use App\Http\Controllers\CollaboratorController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MyTasksController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\QrCodeController;
 use App\Http\Controllers\QrRedirectController;
 use App\Http\Controllers\SubtaskController;
 use App\Http\Controllers\TaskCommentController;
 use App\Http\Controllers\TaskController;
+use App\Http\Controllers\TaskNotificationController;
+use App\Http\Controllers\TemporaryCoverageController;
 use App\Http\Controllers\UserCapacityController;
 use App\Http\Controllers\WhatsAppWebhookController;
 use App\Http\Middleware\TrackUserActivity;
@@ -28,7 +31,9 @@ Route::get('q/{slug}', QrRedirectController::class)->name('qr.redirect');
 
 Route::middleware(['auth', TrackUserActivity::class])->group(function (): void {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
-    Route::get('profile', fn () => view('profile'))->name('profile');
+    Route::get('profile', ProfileController::class)->name('profile');
+    Route::post('profile/coverages', [TemporaryCoverageController::class, 'store'])->name('coverages.store');
+    Route::delete('profile/coverages/{coverage}', [TemporaryCoverageController::class, 'destroy'])->name('coverages.destroy');
     Route::post('ai/assistant', AiAssistantController::class)->name('ai.assistant');
     Route::post('ai/assistant/speech', AiSpeechController::class)->name('ai.assistant.speech');
     Route::post('activity/heartbeat', [ActivityIngestionController::class, 'heartbeat'])->name('activity.heartbeat');
@@ -47,6 +52,8 @@ Route::middleware(['auth', TrackUserActivity::class])->group(function (): void {
     });
 
     Route::get('my-tasks', MyTasksController::class)->name('tasks.mine');
+    Route::post('my-tasks/notifications/{notification}/open', [TaskNotificationController::class, 'open'])->name('task-notifications.open');
+    Route::patch('my-tasks/notifications/read-all', [TaskNotificationController::class, 'readAll'])->name('task-notifications.read-all');
 
     Route::patch('users/{user}/capacity', [UserCapacityController::class, 'update'])->name('users.capacity.update');
 

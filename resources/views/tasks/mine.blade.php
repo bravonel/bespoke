@@ -17,6 +17,63 @@
 
     <div class="shell space-y-8">
 
+        @if ($notifications->isNotEmpty())
+            <section class="panel overflow-hidden">
+                <div class="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 px-5 py-4 sm:px-6">
+                    <div class="flex items-center gap-3">
+                        <span class="grid h-10 w-10 place-items-center rounded-2xl bg-pink-50 text-[#e91e8c]">
+                            <x-heroicon-o-sparkles class="h-5 w-5" aria-hidden="true" />
+                        </span>
+                        <div>
+                            <h2 class="font-semibold text-slate-950">Novedades</h2>
+                            <p class="text-xs text-slate-500">Asignaciones, comentarios y cambios que requieren tu atención.</p>
+                        </div>
+                    </div>
+
+                    @if ($unreadCount > 0)
+                        <form method="POST" action="{{ route('task-notifications.read-all') }}">
+                            @csrf
+                            @method('PATCH')
+                            <button class="button-secondary py-2 text-xs">Marcar todas como leídas</button>
+                        </form>
+                    @endif
+                </div>
+
+                <div class="divide-y divide-stone-100">
+                    @foreach ($notifications as $notification)
+                        @php
+                            $kind = data_get($notification->data, 'kind');
+                            $icon = match ($kind) {
+                                'task.commented' => 'chat-bubble-left-right',
+                                'task.status_changed' => 'arrow-path',
+                                'coverage.assigned' => 'user-plus',
+                                'coverage.revoked' => 'user-minus',
+                                default => 'clipboard-document-check',
+                            };
+                        @endphp
+                        <form method="POST" action="{{ route('task-notifications.open', $notification) }}">
+                            @csrf
+                            <button class="group flex w-full items-start gap-3 px-5 py-4 text-left transition hover:bg-stone-50 sm:px-6 {{ $notification->read_at ? 'opacity-65' : 'bg-amber-50/35' }}">
+                                <span class="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-stone-200 bg-white text-slate-500 transition group-hover:text-slate-800">
+                                    <x-dynamic-component :component="'heroicon-o-'.$icon" class="h-4 w-4" aria-hidden="true" />
+                                </span>
+                                <span class="min-w-0 flex-1">
+                                    <span class="flex items-center gap-2">
+                                        <strong class="truncate text-sm text-slate-900">{{ data_get($notification->data, 'title', 'Novedad en una tarea') }}</strong>
+                                        @unless ($notification->read_at)
+                                            <span class="h-2 w-2 shrink-0 rounded-full bg-[#e91e8c]" aria-label="Sin leer"></span>
+                                        @endunless
+                                    </span>
+                                    <span class="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">{{ data_get($notification->data, 'message') }}</span>
+                                </span>
+                                <span class="shrink-0 text-[10px] font-medium text-slate-400">{{ $notification->created_at->diffForHumans(short: true) }}</span>
+                            </button>
+                        </form>
+                    @endforeach
+                </div>
+            </section>
+        @endif
+
         @if ($tasks->isEmpty())
             <div class="panel p-8 text-center text-slate-500">
                 No tienes tareas asignadas. Cuando el equipo te asigne trabajo, aparecerá aquí.
@@ -57,6 +114,9 @@
                                     <div class="flex items-start justify-between gap-4">
                                         <div class="min-w-0 flex-1">
                                             <div class="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                                                @if ($task->coverage_name)
+                                                    <span class="rounded-full bg-pink-50 px-2 py-1 normal-case tracking-normal text-[#c21875]">Cubriendo a {{ $task->coverage_name }}</span>
+                                                @endif
                                                 <span>{{ $task->project->name }}</span>
                                                 <span>·</span>
                                                 <span>{{ $task->project->client->name }}</span>
@@ -117,6 +177,9 @@
                                             @csrf
                                             @method('PATCH')
                                             <input type="hidden" name="planned_for" value="{{ today()->addDay()->format('Y-m-d') }}">
+                                            @if ($task->assignments->first())
+                                                <input type="hidden" name="user_id" value="{{ $task->assignments->first()->user_id }}">
+                                            @endif
                                             <x-icon-button type="submit" label="Pasar tarea a mañana" icon="calendar-days" size="sm" />
                                         </form>
                                     @endif

@@ -5,11 +5,15 @@ namespace App\Services\Access;
 use App\Models\Project;
 use App\Models\ProjectMember;
 use App\Models\Task;
+use App\Models\TemporaryCoverage;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Schema;
 
 class OperationalAccess
 {
+    private array $coveredUserIds = [];
+
     private const GLOBAL_ROLES = [
         User::ROLE_ADMIN,
         User::ROLE_DIRECTION,
@@ -62,9 +66,19 @@ class OperationalAccess
 
     public function canOperateTask(User $user, Task $task): bool
     {
-        return $this->canManageTask($user, $task)
+        if ($this->canManageTask($user, $task)
             || $task->assigned_to === $user->id
-            || $task->assignments()->where('user_id', $user->id)->exists();
+            || $task->assignments()->where('user_id', $user->id)->exists()) {
+            return true;
+        }
+
+        $coveredIds = $this->coveredUserIds($user);
+
+        return $coveredIds !== [] && (
+            in_array((int) $task->assigned_to, $coveredIds, true)
+            || in_array((int) $task->project->owner_id, $coveredIds, true)
+            || $task->assignments()->whereIn('user_id', $coveredIds)->exists()
+        );
     }
 
     public function projects(User $user): Builder
@@ -75,15 +89,19 @@ class OperationalAccess
             return $query;
         }
 
-        return $query->where(function (Builder $query) use ($user): void {
+        $userIds = [$user->id, ...$this->coveredUserIds($user)];
+
+        return $query->where(function (Builder $query) use ($userIds): void {
             $query
-                ->where('owner_id', $user->id)
+                ->whereIn('owner_id', $userIds)
                 ->orWhereHas('memberships', fn (Builder $membership) => $membership
-                    ->where('user_id', $user->id)
+                    ->whereIn('user_id', $userIds)
                     ->where('status', ProjectMember::STATUS_ACTIVE))
-                ->orWhereHas('tasks', fn (Builder $task) => $task
-                    ->where('assigned_to', $user->id)
-                    ->orWhereHas('assignments', fn (Builder $assignment) => $assignment->where('user_id', $user->id)));
+                ->orWhereHas('tasks', fn (Builder $task) => $task->where(function (Builder $task) use ($userIds): void {
+                    $task
+                        ->whereIn('assigned_to', $userIds)
+                        ->orWhereHas('assignments', fn (Builder $assignment) => $assignment->whereIn('user_id', $userIds));
+                }));
         });
     }
 
@@ -95,15 +113,33 @@ class OperationalAccess
             return $query;
         }
 
-        return $query->where(function (Builder $query) use ($user): void {
+        $userIds = [$user->id, ...$this->coveredUserIds($user)];
+
+        return $query->where(function (Builder $query) use ($userIds): void {
             $query
-                ->where('assigned_to', $user->id)
-                ->orWhereHas('assignments', fn (Builder $assignment) => $assignment->where('user_id', $user->id))
+                ->whereIn('assigned_to', $userIds)
+                ->orWhereHas('assignments', fn (Builder $assignment) => $assignment->whereIn('user_id', $userIds))
                 ->orWhereHas('project', fn (Builder $project) => $project
-                    ->where('owner_id', $user->id)
+                    ->whereIn('owner_id', $userIds)
                     ->orWhereHas('memberships', fn (Builder $membership) => $membership
-                        ->where('user_id', $user->id)
+                        ->whereIn('user_id', $userIds)
                         ->where('status', ProjectMember::STATUS_ACTIVE)));
         });
+    }
+
+    public function coveredUserIds(User $user): array
+    {
+        if (! Schema::hasTable('temporary_coverages')) {
+            return [];
+        }
+
+        return $this->coveredUserIds[$user->id] ??= TemporaryCoverage::query()
+            ->effective()
+            ->where('delegate_user_id', $user->id)
+            ->pluck('owner_user_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
     }
 }

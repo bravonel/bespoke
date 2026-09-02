@@ -3,18 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Models\Project;
+use App\Models\ProjectWorkload;
 use App\Models\Task;
 use App\Models\User;
 use App\Services\Access\OperationalAccess;
 use App\Services\Activity\ActivityFeed;
-use App\Services\Tasks\TaskWorkflow;
 use App\Services\Tasks\TaskAssignments;
+use App\Services\Tasks\TaskNotifier;
+use App\Services\Tasks\TaskWorkflow;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class TaskController extends Controller
 {
@@ -68,9 +70,10 @@ class TaskController extends Controller
         return view('tasks.show', $viewData);
     }
 
-    public function update(Request $request, Task $task, OperationalAccess $access, TaskAssignments $assignments): RedirectResponse
+    public function update(Request $request, Task $task, OperationalAccess $access, TaskAssignments $assignments, TaskNotifier $notifier): RedirectResponse
     {
         abort_unless($access->canManageTask($request->user(), $task), 403);
+        $previousAssignees = $task->loadMissing('assignments')->assignedUserIds();
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
@@ -78,7 +81,7 @@ class TaskController extends Controller
             'assigned_to' => ['nullable', 'exists:users,id'],
             'assignments' => ['nullable', 'array'],
             'assignments.*.user_id' => ['nullable', 'distinct', 'exists:users,id'],
-            'assignments.*.role' => ['nullable', Rule::in(array_keys(\App\Models\ProjectWorkload::roleOptions()))],
+            'assignments.*.role' => ['nullable', Rule::in(array_keys(ProjectWorkload::roleOptions()))],
             'assignments.*.work_date' => ['nullable', 'date'],
             'assignments.*.estimated_hours' => ['nullable', 'numeric', 'min:0', 'max:24'],
             'assignments.*.personal_priority' => ['nullable', 'integer', 'min:1', 'max:999'],
@@ -94,6 +97,10 @@ class TaskController extends Controller
             $assignments->sync($task, $this->assignmentRows($validated));
         });
 
+        $task->unsetRelation('assignments')->load('assignments');
+        $newAssignees = array_values(array_diff($task->assignedUserIds(), $previousAssignees));
+        $notifier->assigned($task, $request->user(), $newAssignees);
+
         return to_route('projects.show', $task->project)->with('status', 'Tarea actualizada.');
     }
 
@@ -106,7 +113,7 @@ class TaskController extends Controller
         return to_route('projects.show', $project)->with('status', 'Tarea eliminada.');
     }
 
-    public function store(Request $request, Project $project, OperationalAccess $access, TaskAssignments $assignments): RedirectResponse
+    public function store(Request $request, Project $project, OperationalAccess $access, TaskAssignments $assignments, TaskNotifier $notifier): RedirectResponse
     {
         abort_unless($access->canManageProject($request->user(), $project), 403);
         $validated = $request->validate([
@@ -116,7 +123,7 @@ class TaskController extends Controller
             'assigned_to' => ['nullable', 'exists:users,id'],
             'assignments' => ['nullable', 'array'],
             'assignments.*.user_id' => ['nullable', 'distinct', 'exists:users,id'],
-            'assignments.*.role' => ['nullable', Rule::in(array_keys(\App\Models\ProjectWorkload::roleOptions()))],
+            'assignments.*.role' => ['nullable', Rule::in(array_keys(ProjectWorkload::roleOptions()))],
             'assignments.*.work_date' => ['nullable', 'date'],
             'assignments.*.estimated_hours' => ['nullable', 'numeric', 'min:0', 'max:24'],
             'assignments.*.personal_priority' => ['nullable', 'integer', 'min:1', 'max:999'],
@@ -155,6 +162,8 @@ class TaskController extends Controller
         }
 
         $assignments->sync($task, $this->assignmentRows($validated), notes: $task->title);
+        $task->unsetRelation('assignments')->load('assignments');
+        $notifier->assigned($task, $request->user(), $task->assignedUserIds());
 
         return to_route('projects.show', $project)->with('status', 'Tarea agregada.');
     }
@@ -188,7 +197,7 @@ class TaskController extends Controller
         return back()->with('status', 'Día de carga actualizado.');
     }
 
-    public function updateStatus(Request $request, Task $task, TaskWorkflow $workflow, OperationalAccess $access): RedirectResponse
+    public function updateStatus(Request $request, Task $task, TaskWorkflow $workflow, OperationalAccess $access, TaskNotifier $notifier): RedirectResponse
     {
         abort_unless($access->canOperateTask($request->user(), $task), 403);
         $validated = $request->validate([
@@ -198,6 +207,7 @@ class TaskController extends Controller
         ]);
 
         $nextStatus = $validated['status'];
+        $previousStatus = $task->status;
         abort_if($nextStatus === 'finalized' && ! $access->canManageTask($request->user(), $task), 403);
         $attributes = $workflow->transition($task, $nextStatus, $validated);
 
@@ -210,11 +220,12 @@ class TaskController extends Controller
 
         $task->update($attributes);
         $workflow->syncProjectCompletion($task);
+        $notifier->statusChanged($task->fresh(['assignments', 'project']), $request->user(), $previousStatus);
 
         return to_route('projects.show', $task->project)->with('status', 'Estado de tarea actualizado.');
     }
 
-    public function move(Request $request, Task $task, TaskWorkflow $workflow, OperationalAccess $access): JsonResponse
+    public function move(Request $request, Task $task, TaskWorkflow $workflow, OperationalAccess $access, TaskNotifier $notifier): JsonResponse
     {
         abort_unless($access->canOperateTask($request->user(), $task), 403);
         $validated = $request->validate([
@@ -229,6 +240,7 @@ class TaskController extends Controller
         ]);
 
         $projectId = $task->project_id;
+        $previousStatus = $task->status;
         abort_if($validated['status'] === 'finalized' && ! $access->canManageTask($request->user(), $task), 403);
 
         DB::transaction(function () use ($access, $request, $task, $validated, $workflow, $projectId): void {
@@ -265,6 +277,8 @@ class TaskController extends Controller
                 );
             }
         });
+
+        $notifier->statusChanged($task->fresh(['assignments', 'project']), $request->user(), $previousStatus);
 
         return response()->json([
             'message' => 'Tablero actualizado.',

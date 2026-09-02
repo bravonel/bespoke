@@ -16,6 +16,12 @@ new class extends Component
     }
 }; ?>
 
+@php
+    $taskUnreadCount = \Illuminate\Support\Facades\Schema::hasTable('notifications')
+        ? auth()->user()->unreadNotifications()->count()
+        : 0;
+@endphp
+
 <nav x-data="{ open: false }" class="sticky top-0 z-40 border-b border-white/70 bg-white/85 backdrop-blur">
     <!-- Primary Navigation Menu -->
     <div class="shell">
@@ -57,7 +63,14 @@ new class extends Component
                     @endif
 
                     <x-nav-link :href="route('tasks.mine')" :active="request()->routeIs('tasks.mine')" wire:navigate>
-                        {{ __('Tareas') }}
+                        <span class="inline-flex items-center gap-2 whitespace-nowrap">
+                            {{ __('Mis tareas') }}
+                            @if ($taskUnreadCount > 0)
+                                <span class="inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[#e91e8c] px-1.5 text-[10px] font-bold leading-none text-white" aria-label="{{ $taskUnreadCount }} {{ $taskUnreadCount === 1 ? 'novedad' : 'novedades' }} sin leer">
+                                    {{ $taskUnreadCount > 99 ? '99+' : $taskUnreadCount }}
+                                </span>
+                            @endif
+                        </span>
                     </x-nav-link>
 
                     @if (auth()->user()->isAdmin())
@@ -85,7 +98,7 @@ new class extends Component
 
                     <x-slot name="content">
                         <x-dropdown-link :href="route('profile')" wire:navigate>
-                            {{ __('Perfil') }}
+                            {{ __('Perfil y cobertura') }}
                         </x-dropdown-link>
 
                         <!-- Authentication -->
@@ -144,7 +157,14 @@ new class extends Component
             @endif
 
             <x-responsive-nav-link :href="route('tasks.mine')" :active="request()->routeIs('tasks.mine')" wire:navigate>
-                {{ __('Mis tareas') }}
+                <span class="inline-flex items-center gap-2">
+                    {{ __('Mis tareas') }}
+                    @if ($taskUnreadCount > 0)
+                        <span class="inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[#e91e8c] px-1.5 text-[10px] font-bold leading-none text-white" aria-label="{{ $taskUnreadCount }} {{ $taskUnreadCount === 1 ? 'novedad' : 'novedades' }} sin leer">
+                            {{ $taskUnreadCount > 99 ? '99+' : $taskUnreadCount }}
+                        </span>
+                    @endif
+                </span>
             </x-responsive-nav-link>
 
             @if (auth()->user()->isAdmin())
@@ -163,7 +183,7 @@ new class extends Component
 
             <div class="mt-3 space-y-1">
                 <x-responsive-nav-link :href="route('profile')" wire:navigate>
-                    {{ __('Perfil') }}
+                    {{ __('Perfil y cobertura') }}
                 </x-responsive-nav-link>
 
                 <!-- Authentication -->

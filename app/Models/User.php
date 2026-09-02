@@ -186,6 +186,16 @@ class User extends Authenticatable
         return $this->hasMany(UiEvent::class);
     }
 
+    public function coveragesCreated(): HasMany
+    {
+        return $this->hasMany(TemporaryCoverage::class, 'owner_user_id');
+    }
+
+    public function coveragesReceived(): HasMany
+    {
+        return $this->hasMany(TemporaryCoverage::class, 'delegate_user_id');
+    }
+
     public function canViewTeamActivity(): bool
     {
         return $this->isAdmin();
